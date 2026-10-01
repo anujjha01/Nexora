@@ -22,7 +22,7 @@ import {
 import { createConversation } from "../features/createConversation";
 import { deleteConversationApi } from "../features/deleteConversation";
 import { setMessage } from "../redux/messageSlice";
-import logout from "../features/logout";
+import logout from "../features/logOut";
 import { setUseradata } from "../redux/userSlice"
 
 
