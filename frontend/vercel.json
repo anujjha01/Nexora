@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://your-stable-tunnel-host.example.com/api/:path*"
+      "destination": "https://biographies-navigator-roman-onto.trycloudflare.com/api/:path*"
     },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
