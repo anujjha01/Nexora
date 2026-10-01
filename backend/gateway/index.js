@@ -9,8 +9,12 @@ import { proxyWithHeader } from './utils/proxyWithHeader.js';
 import morgan from 'morgan';
 
 const app = express();
+const frontendOrigins = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL || 'http://localhost:5173')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 app.use(cors({
-    origin: process.env.FRONTEND_URL,
+    origin: frontendOrigins,
     credentials: true
 }))
 
