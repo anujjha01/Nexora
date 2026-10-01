@@ -1,0 +1,24 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+**/serviceAccountKey.json
+
+# Dependencies, builds, caches, and runtime output
+**/node_modules/
+**/dist/
+**/dist-ssr/
+**/.vite/
+**/.cache/
+**/*.log
+output/
+tmp/
+
+# Local diagnostics and generated search results
+frontend/vite-project/build_error.txt
+frontend/vite-project/eslint-errors.txt
+frontend/vite-project/eslint-errors.json
+backend/services/agent/tavily_result.json

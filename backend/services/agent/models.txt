@@ -1,0 +1,11 @@
+qwen/qwen3.8-27b
+canopylabs/orpheus-arabic-saudi
+whisper-large-v3
+openai/gpt-oss-safeguard-20b
+allam-2-7b
+canopylabs/orpheus-v1-english
+openai/gpt-oss-120b
+whisper-large-v3-turbo
+meta-llama/llama-prompt-guard-2-86m
+meta-llama/llama-prompt-guard-2-22m
+openai/gpt-oss-20b
