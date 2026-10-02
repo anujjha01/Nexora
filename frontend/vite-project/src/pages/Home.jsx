@@ -15,6 +15,7 @@ function Home() {
   const { message = [] } = useSelector((state) => state.message);
   const dispatch = useDispatch();
   const [artifactOpen, setArtifactOpen] = useState(false);
+  const [loginError, setLoginError] = useState("");
 
   useEffect(() => {
     const latestAssistant = [...message].reverse().find((item) => item?.role === "assistant");
@@ -33,12 +34,19 @@ function Home() {
   };
 
   const googleLogin = async () => {
+    if (!auth || !googleProvider) {
+      setLoginError("Google sign-in is not configured. Add VITE_FIREBASE_API_KEY to the deployment environment.");
+      return;
+    }
+
+    setLoginError("");
     try {
       const data = await signInWithPopup(auth, googleProvider);
       const token = await data.user.getIdToken();
       await handleLogin(token);
     } catch (error) {
       console.log("Google login error:", error);
+      setLoginError(error.message || "Google sign-in failed. Please try again.");
     }
   };
 
@@ -60,12 +68,18 @@ function Home() {
               </p>
             </div>
             <button
-              className="w-full flex items-center justify-center gap-3 py-[11px] rounded-xl text-sm font-medium text-black/90 bg-white hover:bg-gray-200 transition-all duration-150 cursor-pointer"
+              className="w-full flex items-center justify-center gap-3 py-[11px] rounded-xl text-sm font-medium text-black/90 bg-white hover:bg-gray-200 transition-all duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
               onClick={googleLogin}
+              disabled={!auth || !googleProvider}
             >
               <FcGoogle size={15} />
               Continue With Google
             </button>
+            {(!auth || !googleProvider || loginError) && (
+              <p role="alert" className="text-center text-xs leading-relaxed text-amber-300">
+                {loginError || "Google sign-in needs the Firebase web API key to be configured."}
+              </p>
+            )}
           </div>
         </div>
       )}

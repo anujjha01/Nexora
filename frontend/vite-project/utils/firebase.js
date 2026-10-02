@@ -4,10 +4,10 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// Firebase is optional during preview/builds without a configured web API key.
+const firebaseApiKey = import.meta.env.VITE_FIREBASE_API_KEY?.trim();
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  apiKey: firebaseApiKey,
   authDomain: "nexoraai-e577e.firebaseapp.com",
   projectId: "nexoraai-e577e",
   storageBucket: "nexoraai-e577e.firebasestorage.app",
@@ -16,7 +16,6 @@ const firebaseConfig = {
   measurementId: "G-4BWM8CZ6YP"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app)
-export const googleProvider = new GoogleAuthProvider()
+const app = firebaseApiKey ? initializeApp(firebaseConfig) : null;
+export const auth = app ? getAuth(app) : null;
+export const googleProvider = auth ? new GoogleAuthProvider() : null;

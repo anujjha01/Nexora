@@ -1,0 +1,178 @@
+name: nexora
+
+services:
+  mongo:
+    image: mongo:8
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  auth:
+    build:
+      context: .
+      dockerfile: backend/services/auth/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - path: ./backend/services/auth/.env
+        required: false
+    environment:
+      PORT: "8001"
+      NODE_ENV: development
+      COOKIE_SECURE: "false"
+      MONGODB_URI: mongodb://mongo:27017/nexora
+      REDIS_URL: redis://redis:6379
+      FIREBASE_SERVICE_ACCOUNT_PATH: /run/secrets/firebase-service-account.json
+    secrets:
+      - source: firebase_service_account
+        target: firebase-service-account.json
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "8001"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8001/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 4s
+      retries: 10
+      start_period: 15s
+
+  chat:
+    build:
+      context: .
+      dockerfile: backend/services/chat/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - path: ./backend/services/chat/.env
+        required: false
+    environment:
+      PORT: "8002"
+      MONGODB_URI: mongodb://mongo:27017/nexora
+    depends_on:
+      mongo:
+        condition: service_healthy
+    expose:
+      - "8002"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8002/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 4s
+      retries: 10
+      start_period: 15s
+
+  agent:
+    build:
+      context: .
+      dockerfile: backend/services/agent/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - path: ./backend/services/agent/.env
+        required: false
+    environment:
+      PORT: "8003"
+      MONGODB_URI: mongodb://mongo:27017/nexora
+      REDIS_URL: redis://redis:6379
+      CHAT_SERVICE: http://chat:8002
+      COMFYUI_URL: ${COMFYUI_URL:-http://host.docker.internal:8188}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - agent_storage:/app/backend/services/agent/storage
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "8003"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8003/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 4s
+      retries: 10
+      start_period: 20s
+
+  gateway:
+    build:
+      context: .
+      dockerfile: backend/gateway/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - path: ./backend/gateway/.env
+        required: false
+    environment:
+      PORT: "8000"
+      NODE_ENV: development
+      REDIS_URL: redis://redis:6379
+      AUTH_SERVICE: http://auth:8001
+      CHAT_SERVICE: http://chat:8002
+      AGENT_SERVICE: http://agent:8003
+      FRONTEND_URLS: http://localhost:3000,http://localhost:5173
+    depends_on:
+      redis:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+      chat:
+        condition: service_healthy
+      agent:
+        condition: service_healthy
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 4s
+      retries: 10
+      start_period: 10s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
+    restart: unless-stopped
+    depends_on:
+      gateway:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 4s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  mongo_data:
+  redis_data:
+  agent_storage:
+
+secrets:
+  firebase_service_account:
+    file: ${FIREBASE_SERVICE_ACCOUNT_FILE:-./backend/services/auth/serviceAccountKey.json}

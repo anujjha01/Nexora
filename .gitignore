@@ -1,24 +1,46 @@
-# Local configuration and credentials
+# Secrets and local configuration
 .env
 .env.*
 !.env.example
 **/.env
 **/.env.*
 !**/.env.example
-**/serviceAccountKey.json
+**/serviceAccountKey*.json
+*.pem
+*.key
 
-# Dependencies, builds, caches, and runtime output
+# Vercel and local tooling
+.vercel/
+.turbo/
+.cache/
+
+# Dependencies and build output
 **/node_modules/
 **/dist/
 **/dist-ssr/
 **/.vite/
-**/.cache/
+**/coverage/
+**/__pycache__/
+**/.pytest_cache/
+
+# Logs, temporary files, and generated data
 **/*.log
+**/*.pid
+**/storage/
 output/
 tmp/
+*.tmp
+*.bak
 
 # Local diagnostics and generated search results
 frontend/vite-project/build_error.txt
 frontend/vite-project/eslint-errors.txt
 frontend/vite-project/eslint-errors.json
 backend/services/agent/tavily_result.json
+
+# Operating-system/editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
