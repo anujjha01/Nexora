@@ -41,8 +41,11 @@ app.use((error, _req, res, _next) => {
   res.status(500).json({ message: "The server could not complete this request." });
 });
 
-const required = ["MONGODB_URI", "REDIS_URL", "FIREBASE_SERVICE_ACCOUNT_JSON"];
+const required = ["MONGODB_URI", "REDIS_URL"];
 const missing = required.filter((key) => !process.env[key]);
+if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON && !process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
+  missing.push("FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT_PATH");
+}
 if (missing.length) throw new Error(`Missing required environment values: ${missing.join(", ")}`);
 
 await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 15000 });
