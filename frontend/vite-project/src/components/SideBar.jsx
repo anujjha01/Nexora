@@ -49,6 +49,15 @@ function SideBar({ mobileOpen = false, onCloseMobile }) {
     getConvo();
   }, [userData?.id, dispatch]);
 
+  useEffect(() => {
+    const expandOnSmallScreens = () => {
+      if (window.matchMedia("(max-width: 1023px)").matches) setCollapsed(false);
+    };
+    expandOnSmallScreens();
+    window.addEventListener("resize", expandOnSmallScreens);
+    return () => window.removeEventListener("resize", expandOnSmallScreens);
+  }, []);
+
   const handleCreateConversation = async () => {
     try {
       const data = await createConversation();
@@ -141,9 +150,9 @@ function SideBar({ mobileOpen = false, onCloseMobile }) {
                 onClick={async () => {
                   dispatch(setSelectedConversation(conv));
                   dispatch(setMessage([])); // prevent visual flicker of old chat
+                  onCloseMobile?.();
                   const data = await getMessages(conv?._id);
                   dispatch(setMessage(data));
-                  onCloseMobile?.();
                 }}
                 className={`group flex items-center justify-between cursor-pointer mb-0.5 px-3 py-2.5 rounded-[10px] border transition-colors duration-150 ${isActive
                   ? "bg-indigo-500/10 border-indigo-500/[0.18]"
