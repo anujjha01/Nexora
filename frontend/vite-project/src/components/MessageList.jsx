@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 import MessageBubble from "./MessageBubble";
 
-function MessageList() {
+function MessageList({ onSuggestionClick }) {
   const bottomRef = useRef(null);
   const { selectedConversation } = useSelector(
     (state) => state.conversation
@@ -15,14 +15,14 @@ function MessageList() {
   }, [message, isLoading, loadingStatus]);
 
   const suggestions = [
-    "Build an AI agent with microservices",
-    "Explain Redis",
-    "Build a ChatGPT clone",
-    "Create a Spring Boot backend",
+    "Explain RAG",
+    "Summarize this topic",
+    "Write a JavaScript function",
+    "Explain how Redis works",
   ];
 
   return (
-    <div className="flex-1 flex flex-col overflow-y-auto px-6 py-6 space-y-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="flex-1 flex min-h-0 min-w-0 flex-col overflow-y-auto px-3 py-4 sm:px-6 sm:py-6 space-y-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {message.length === 0 || !selectedConversation ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
           <div className="flex flex-col gap-1.5">
@@ -44,6 +44,8 @@ function MessageList() {
             {suggestions.map((s) => (
               <button
                 key={s}
+                type="button"
+                onClick={() => onSuggestionClick?.(s)}
                 className="text-[12px] text-slate-400 bg-white/[0.04] border border-white/[0.07] px-3 py-1.5 rounded-lg hover:bg-white/[0.08] hover:text-slate-200 transition-colors duration-150 cursor-pointer"
               >
                 {s}

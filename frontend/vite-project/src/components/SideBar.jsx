@@ -9,6 +9,7 @@ import {
   Plus,
   User,
   Trash2,
+  X,
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import getMessages from "../features/getMessages";
@@ -26,7 +27,7 @@ import logout from "../features/logOut";
 import { setUseradata } from "../redux/userSlice"
 
 
-function SideBar() {
+function SideBar({ mobileOpen = false, onCloseMobile }) {
   const [collapsed, setCollapsed] = useState(false);
   const dispatch = useDispatch();
   const [imageError, setImageError] = useState(false);
@@ -56,6 +57,7 @@ function SideBar() {
         const conversationData = data?.conversation || data?.data || data;
         dispatch(setSelectedConversation(conversationData));
         dispatch(setMessage([]));
+        onCloseMobile?.();
       }
     } catch (error) {
       console.error("Error creating conversation:", error);
@@ -73,8 +75,7 @@ function SideBar() {
 
   return (
     <div
-      className={`fixed lg:static inset-y-0 left-0 z-50 h-screen shrink-0 bg-[#0d0f14] border-r border-white/[0.06] transition-all duration-300 ${collapsed ? "w-[68px]" : "w-[270px]"
-        }`}
+      className={`fixed inset-y-0 left-0 z-50 h-[100dvh] w-[min(84vw,300px)] shrink-0 border-r border-white/[0.06] bg-[#0d0f14] transition-all duration-300 lg:static lg:h-full lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"} ${collapsed ? "lg:w-[68px]" : "lg:w-[270px]"}`}
     >
       <div className="flex flex-col h-full">
         {/* Header */}
@@ -85,6 +86,10 @@ function SideBar() {
           >
             <PanelLeftIcon size={16} />
           </div>
+
+          <button type="button" aria-label="Close navigation menu" onClick={onCloseMobile} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-white/[0.06] hover:text-white lg:hidden">
+            <X size={17} />
+          </button>
 
           {!collapsed && (
             <>
@@ -138,6 +143,7 @@ function SideBar() {
                   dispatch(setMessage([])); // prevent visual flicker of old chat
                   const data = await getMessages(conv?._id);
                   dispatch(setMessage(data));
+                  onCloseMobile?.();
                 }}
                 className={`group flex items-center justify-between cursor-pointer mb-0.5 px-3 py-2.5 rounded-[10px] border transition-colors duration-150 ${isActive
                   ? "bg-indigo-500/10 border-indigo-500/[0.18]"

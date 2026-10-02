@@ -151,7 +151,7 @@ function Artifact({ open, onClose }) {
   return (
     <>
     <button type="button" aria-label="Close artifact panel" onClick={onClose} className="fixed inset-0 z-40 cursor-default bg-black/45 backdrop-blur-[1px]" />
-    <aside role="dialog" aria-modal="true" aria-label="Artifacts" style={{ width: `${panelWidth}px`, maxWidth: "94vw" }} className="fixed inset-y-0 right-0 z-50 flex h-full flex-col overflow-hidden border-l border-white/[0.08] bg-[#101116] shadow-2xl shadow-black/50">
+    <aside role="dialog" aria-modal="true" aria-label="Artifacts" style={{ width: window.innerWidth < 640 ? "100vw" : `${panelWidth}px`, maxWidth: "100vw" }} className="fixed inset-y-0 right-0 z-50 flex h-[100dvh] flex-col overflow-hidden border-l border-white/[0.08] bg-[#101116] shadow-2xl shadow-black/50 sm:max-w-[94vw]">
       <div
         role="separator"
         aria-label="Resize artifact panel"
@@ -168,7 +168,7 @@ function Artifact({ open, onClose }) {
           if (event.key === "ArrowRight") setPanelWidth((width) => Math.max(360, width - 32));
         }}
         tabIndex={0}
-        className="group absolute inset-y-0 left-0 z-10 flex w-2 cursor-col-resize items-center justify-center outline-none hover:bg-violet-400/15 focus-visible:bg-violet-400/20"
+        className="group absolute inset-y-0 left-0 z-10 hidden w-2 cursor-col-resize items-center justify-center outline-none hover:bg-violet-400/15 focus-visible:bg-violet-400/20 sm:flex"
       ><GripVertical size={14} className="text-slate-600 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" /></div>
       <header className="h-14 px-4 border-b border-white/[0.07] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5">

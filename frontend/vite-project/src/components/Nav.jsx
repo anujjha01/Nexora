@@ -1,22 +1,28 @@
-import { MessageSquare, PanelRight, PanelRightClose } from "lucide-react"
+import { Menu, MessageSquare, PanelRight, PanelRightClose } from "lucide-react"
 import { useSelector } from "react-redux"
 
-function Nav({ artifactOpen, onToggleArtifact }) {
+function Nav({ artifactOpen, onToggleArtifact, onOpenSidebar }) {
   const { selectedConversation } = useSelector(state => state.conversation)
   const { message } = useSelector(state => state.message)
   return (
     <>
-      {selectedConversation && <div className='h-14 flex items-center gap-2.5 px-5 border-white/[0.06] bg-[#0d0f14] border-b'>
-        <div className='flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20'>
+      <header className={`flex h-14 shrink-0 items-center gap-2 border-b border-white/[0.06] bg-[#0d0f14] px-3 sm:gap-2.5 sm:px-5 ${selectedConversation ? "" : "lg:hidden"}`}>
+        <button type="button" aria-label="Open navigation menu" onClick={onOpenSidebar} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-white/[0.06] hover:text-white lg:hidden">
+          <Menu size={19} />
+        </button>
+        <img src="/nexora-favicon.png" alt="" className="h-7 w-7 shrink-0 lg:hidden" />
+        <div className='hidden h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-indigo-500/20 bg-indigo-500/10 sm:flex'>
           <MessageSquare size={13} className='text-indigo-400' />
         </div>
-        <div className='text-[14px] font-semibold text-slate-100 tracking-tight'>
-          {selectedConversation?.title || "New Chat"}
-        </div>
-        <div className='text-[10px] font-medium text-slate-600 bg-white/[0.04] border border-white/[0.06] px-2 py-0.5 rounded-full'>
-          {message?.length} Messages
-        </div>
-        <button
+        {selectedConversation ? <>
+          <div className='min-w-0 flex-1 truncate text-[13px] font-semibold tracking-tight text-slate-100 sm:text-[14px]'>
+            {selectedConversation?.title || "New Chat"}
+          </div>
+          <div className='hidden shrink-0 rounded-full border border-white/[0.06] bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-slate-500 sm:block'>
+            {message?.length} Messages
+          </div>
+        </> : <img src="/nexora-logo-horizontal.png" alt="Nexora AI" className="hidden h-8 w-36 object-contain object-left mix-blend-lighten sm:block lg:hidden" />}
+        {selectedConversation && <button
           type="button"
           onClick={onToggleArtifact}
           aria-pressed={artifactOpen}
@@ -25,8 +31,8 @@ function Nav({ artifactOpen, onToggleArtifact }) {
         >
           {artifactOpen ? <PanelRightClose size={14} /> : <PanelRight size={14} />}
           Artifacts
-        </button>
-      </div>}
+        </button>}
+      </header>
 
     </>
   )

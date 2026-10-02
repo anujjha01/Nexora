@@ -15,7 +15,7 @@ import {
   X,
   Trash2,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import sendMessage from "../features/sendMessage";
 import { useSelector, useDispatch } from "react-redux";
 import getMessages from "../features/getMessages";
@@ -30,12 +30,14 @@ import updateConversation from "../features/updateConversation";
 import uploadDocument from "../features/uploadDocument";
 import { deleteDocument, getDocuments } from "../features/getDocuments";
 
-function ChatInput() {
+function ChatInput({ suggestedPrompt, onSuggestionHandled }) {
   const [value, setValue] = useState("");
   const [selectedAgent, setSelectedAgent] = useState("Auto");
   const [attachments, setAttachments] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [micError, setMicError] = useState("");
+  const [isListening, setIsListening] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [documents, setDocuments] = useState([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
@@ -43,7 +45,17 @@ function ChatInput() {
   const { selectedConversation } = useSelector((state) => state.conversation);
   const { isLoading } = useSelector((state) => state.message);
   const abortControllerRef = useRef(null);
+  const recognitionRef = useRef(null);
   const dispatch = useDispatch();
+
+  useEffect(() => {
+    if (!suggestedPrompt) return;
+    setValue(suggestedPrompt);
+    onSuggestionHandled?.();
+    handleSendMessage(suggestedPrompt);
+  }, [suggestedPrompt]);
+
+  useEffect(() => () => recognitionRef.current?.abort(), []);
 
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files || []);
@@ -108,10 +120,10 @@ function ChatInput() {
     setAttachments((current) => current.filter((item) => item._id !== document._id));
   };
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (messageText = value) => {
     if (isUploading) return;
-    if (!value.trim()) return;
-    const promptValue = value.trim();
+    if (!messageText.trim()) return;
+    const promptValue = messageText.trim();
     setValue(""); // clear the input field immediately
 
     dispatch(addMessage({ role: "user", content: promptValue }));
@@ -196,6 +208,52 @@ function ChatInput() {
     }
   };
 
+  const handleMicClick = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setMicError("Voice input isn't supported in this browser. You can type your prompt instead.");
+      return;
+    }
+
+    setMicError("");
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    recognition.lang = navigator.language || "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results || [])
+        .slice(event.resultIndex || 0)
+        .map((result) => result[0]?.transcript || "")
+        .join(" ")
+        .trim();
+      if (transcript) setValue((current) => `${current.trim()}${current.trim() ? " " : ""}${transcript}`);
+    };
+    recognition.onerror = (event) => {
+      const messages = {
+        "not-allowed": "Microphone access was denied. Allow microphone access in your browser settings and try again.",
+        "service-not-allowed": "Microphone access is blocked. Check your browser permissions and try again.",
+        "no-speech": "No speech was detected. Try speaking again.",
+        "audio-capture": "No microphone was found. Check your microphone and try again.",
+      };
+      setMicError(messages[event.error] || "Voice input failed. Please try again or type your prompt.");
+      setIsListening(false);
+    };
+    recognition.onend = () => setIsListening(false);
+    try {
+      recognition.start();
+    } catch {
+      setIsListening(false);
+      setMicError("Voice input couldn't start. Please try again.");
+    }
+  };
+
   const handleStop = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -243,8 +301,8 @@ function ChatInput() {
   ];
 
   return (
-    <div className="w-full overflow-hidden px-3 md:px-5 py-4 border-t border-white/[0.06] bg-[#0d0f14]">
-      <div className="flex flex-col gap-3 bg-white/[0.03] border border-white/[0.07] rounded-2xl px-4 pt-3.5 pb-3">
+    <div className="w-full shrink-0 overflow-hidden border-t border-white/[0.06] bg-[#0d0f14] px-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] pt-2.5 sm:px-5 sm:py-4">
+      <div className="flex flex-col gap-2.5 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-3 pt-3 pb-2.5 sm:gap-3 sm:px-4 sm:pt-3.5 sm:pb-3">
 
         {libraryOpen && (
           <div className="rounded-xl border border-white/[0.08] bg-[#11141b] p-3">
@@ -295,9 +353,14 @@ function ChatInput() {
             <span>{uploadError || "Uploading and indexing document…"}</span>
           </div>
         )}
+        {(isListening || micError) && (
+          <div role="status" aria-live="polite" className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${micError ? "border-rose-400/15 bg-rose-400/[0.06] text-rose-200" : "border-indigo-400/15 bg-indigo-400/[0.05] text-slate-300"}`}>
+            {micError || "Listening… speak your prompt."}
+          </div>
+        )}
 
         {/* Agent pills row */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {agents.map((agent) => {
             const isActive = selectedAgent === agent.label;
             const Icon = agent.icon;
@@ -305,7 +368,11 @@ function ChatInput() {
               <div
                 key={agent.id}
                 onClick={() => setSelectedAgent(agent.label)}
-                className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${isActive
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") setSelectedAgent(agent.label); }}
+                aria-pressed={isActive}
+                className={`flex-shrink-0 inline-flex min-h-8 items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${isActive
                   ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white border-transparent shadow-[0_1px_8px_rgba(99,102,241,.35)]"
                   : "bg-white/[0.03] text-slate-400 border-white/[0.06] hover:bg-white/[0.07]"
                   }`}
@@ -321,7 +388,7 @@ function ChatInput() {
         </div>
 
         {/* Textarea + action buttons row */}
-        <div className="flex items-end gap-2">
+        <div className="flex min-w-0 items-end gap-1.5 sm:gap-2">
           <textarea
             placeholder="Ask Anything..."
             onChange={(e) => setValue(e.target.value)}
@@ -332,8 +399,8 @@ function ChatInput() {
               }
             }}
             value={value}
-            className="flex-1 bg-transparent outline-none resize-none text-[14px] text-slate-200 placeholder:text-slate-600 leading-relaxed [scrollbar-width:none] [&::-webkit-scrollbar]:hidden disabled:opacity-50"
-            rows={3}
+            className="max-h-32 min-w-0 flex-1 resize-none bg-transparent text-[14px] leading-relaxed text-slate-200 outline-none placeholder:text-slate-600 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden disabled:opacity-50 sm:max-h-40"
+            rows={2}
           />
 
           <div className="flex items-center gap-1 shrink-0">
@@ -345,7 +412,7 @@ function ChatInput() {
               <Paperclip size={16} />
             </button>
 
-            <button className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-600 hover:text-slate-400 hover:bg-white/[0.05] border border-transparent hover:border-white/[0.06] transition-all duration-150 bg-transparent cursor-pointer">
+            <button type="button" aria-label={isListening ? "Stop voice input" : "Start voice input"} aria-pressed={isListening} title={isListening ? "Stop voice input" : "Use voice input"} onClick={handleMicClick} className={`flex items-center justify-center w-8 h-8 rounded-lg border border-transparent hover:border-white/[0.06] transition-all duration-150 bg-transparent cursor-pointer ${isListening ? "text-indigo-300 bg-white/[0.05]" : "text-slate-600 hover:text-slate-400 hover:bg-white/[0.05]"}`}>
               <Mic size={16} />
             </button>
 

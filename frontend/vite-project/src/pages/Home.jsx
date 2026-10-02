@@ -15,6 +15,7 @@ function Home() {
   const { message = [] } = useSelector((state) => state.message);
   const dispatch = useDispatch();
   const [artifactOpen, setArtifactOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [loginError, setLoginError] = useState("");
 
   useEffect(() => {
@@ -51,14 +52,15 @@ function Home() {
   };
 
   return (
-    <div className="w-full h-screen flex bg-[#0d0f14] text-white overflow-hidden">
-      <SideBar />
-      <ChatArea artifactOpen={artifactOpen} onToggleArtifact={() => setArtifactOpen((open) => !open)} />
+    <div className="flex h-[100dvh] min-h-0 w-full overflow-hidden bg-[#0d0f14] text-white">
+      <SideBar mobileOpen={mobileSidebarOpen} onCloseMobile={() => setMobileSidebarOpen(false)} />
+      {mobileSidebarOpen && <button type="button" aria-label="Close navigation menu" onClick={() => setMobileSidebarOpen(false)} className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px] lg:hidden" />}
+      <ChatArea artifactOpen={artifactOpen} onToggleArtifact={() => setArtifactOpen((open) => !open)} onOpenSidebar={() => setMobileSidebarOpen(true)} />
       <Artifact open={artifactOpen} onClose={() => setArtifactOpen(false)} />
 
       {!userData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-[340px] bg-[#13151c] border border-white/[0.08] rounded-2xl p-7 flex flex-col gap-5">
+          <div className="mx-4 flex w-full max-w-[340px] flex-col gap-5 rounded-2xl border border-white/[0.08] bg-[#13151c] p-6 sm:p-7">
             <div className="flex flex-col gap-1 items-center text-center">
               <h2 className="text-[17px] font-semibold text-slate-100 tracking-tight">
                 Welcome to Nexora_AI

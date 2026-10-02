@@ -1,16 +1,19 @@
+import { useState } from 'react'
 import MessageList from './MessageList'
 import ChatInput from './ChatInput'
 import Nav from './Nav'
 
-function ChatArea({ artifactOpen, onToggleArtifact }) {
+function ChatArea({ artifactOpen, onToggleArtifact, onOpenSidebar }) {
+  const [suggestedPrompt, setSuggestedPrompt] = useState('')
+
   return (
-    <div className="flex-1 flex flex-col relative h-full overflow-hidden">
-      <Nav artifactOpen={artifactOpen} onToggleArtifact={onToggleArtifact} />
-      <div className="flex-1 overflow-y-auto flex flex-col">
-        <MessageList />
+    <main className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <Nav artifactOpen={artifactOpen} onToggleArtifact={onToggleArtifact} onOpenSidebar={onOpenSidebar} />
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <MessageList onSuggestionClick={setSuggestedPrompt} />
       </div>
-      <ChatInput />
-    </div>
+      <ChatInput suggestedPrompt={suggestedPrompt} onSuggestionHandled={() => setSuggestedPrompt('')} />
+    </main>
   )
 }
 
