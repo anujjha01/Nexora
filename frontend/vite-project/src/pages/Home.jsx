@@ -26,12 +26,14 @@ function Home() {
   }, [message]);
 
   const handleLogin = async (token) => {
-    try {
-      const { data } = await api.post("/api/auth/login", { token });
-      dispatch(setUseradata(data?.user || data));
-    } catch (error) {
-      console.log("Backend login error:", error);
+    const { data } = await api.post("/api/auth/login", { token });
+    const user = data?.user || data;
+
+    if (!user || typeof user !== "object" || (!user.id && !user._id && !user.userID)) {
+      throw new Error("Sign-in succeeded, but Nexora could not create your app session. Please try again.");
     }
+
+    dispatch(setUseradata(user));
   };
 
   const googleLogin = async () => {
@@ -47,7 +49,10 @@ function Home() {
       await handleLogin(token);
     } catch (error) {
       console.log("Google login error:", error);
-      setLoginError(error.message || "Google sign-in failed. Please try again.");
+      const backendMessage = error.response?.data?.message;
+      setLoginError(
+        backendMessage || error.message || "Google sign-in failed. Please try again.",
+      );
     }
   };
 
