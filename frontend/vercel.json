@@ -2,5 +2,20 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm --prefix vite-project ci",
   "buildCommand": "npm --prefix vite-project run build",
-  "outputDirectory": "vite-project/dist"
+  "outputDirectory": "vite-project/dist",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://thin-advisor-restructuring-telecommunications.trycloudflare.com/api/:path*"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/:path*",
+      "headers": [
+        { "key": "x-vercel-enable-rewrite-caching", "value": "0" },
+        { "key": "Cache-Control", "value": "private, no-store, max-age=0" }
+      ]
+    }
+  ]
 }
