@@ -2,9 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm --prefix vite-project ci",
   "buildCommand": "npm --prefix vite-project run build",
-  "outputDirectory": "vite-project/dist",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "headers": []
+  "outputDirectory": "vite-project/dist"
 }
