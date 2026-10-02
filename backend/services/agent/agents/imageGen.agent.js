@@ -4,6 +4,9 @@ import { generateLocalImage } from "../config/localImageGen.js";
 
 export const imageGenAgent = async (state) => {
   if (!state.userId) return { ...state, aiResponse: "Please sign in before generating an image." };
+  if (process.env.NEXORA_HOSTED_FREE === "true") {
+    return { ...state, aiResponse: "Image generation is unavailable in the free hosted version because the current photo model runs on your computer. You can still use it while your local ComfyUI service is running." };
+  }
   if (!isImageKitConfigured()) return { ...state, aiResponse: "Image storage is not configured. Add IMAGE_KIT_PRIVATE_KEY to the agent service environment." };
 
   let imageKitFileId;

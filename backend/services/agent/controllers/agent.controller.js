@@ -1,7 +1,7 @@
-import axios from "axios";
 import graph from "../graph/graph.js";
 import router from "../graph/router.js";
 import { addMessage } from "../config/memory.js";
+import Message from "../../chat/models/message.Model.js";
 
 const progressFor = (agentName) => {
   const labels = {
@@ -44,7 +44,7 @@ const runAgentRequest = async (req, res, emit = null) => {
     await addMessage(conversationId, "user", prompt);
 
     stage = "contact chat service";
-    await axios.post(`${process.env.CHAT_SERVICE}/save-message`, {
+    await Message.create({
       conversationId,
       role: "user",
       content: prompt,
@@ -64,7 +64,7 @@ const runAgentRequest = async (req, res, emit = null) => {
     stage = "save assistant response";
     progress("Saving your answer…");
     await addMessage(conversationId, "assistant", response);
-    await axios.post(`${process.env.CHAT_SERVICE}/save-message`, {
+    await Message.create({
       conversationId,
       role: "assistant",
       content: response,

@@ -19,3 +19,23 @@ Image generation expects ComfyUI with a compatible Stable Diffusion checkpoint o
 Vercel currently builds the Vite frontend from `frontend/`. The Docker Compose stack is for local/self-hosted use; Vercel does not run MongoDB or Redis containers from Compose. A complete Vercel backend deployment needs reachable MongoDB and Redis services plus the Firebase Admin, Firebase Web, model-provider, and ImageKit environment values. Do not use a local-only MongoDB URI for Vercel.
 
 The Firebase Web API key is optional at build time: the app still renders without it and clearly reports that Google sign-in needs configuration. Add the key to the Vercel project's Production and Preview environments to enable sign-in, then redeploy.
+
+## Free hosted deployment
+
+`render.yaml` and `backend/hosted/Dockerfile` run the API gateway, login, chats, and agent routes together as one Render web service. The frontend stays on Vercel. The Vercel API rewrite points to `https://nexora-ai-api.onrender.com`.
+
+This uses Render's Free web service tier. Free services sleep after 15 minutes without traffic and can take about a minute to wake; they have limited CPU and memory. This is enough for a low-traffic demo, but not a reliable always-on production service. See [Render's free instance limits](https://render.com/docs/free).
+
+To keep the entire hosting setup free, create/use MongoDB Atlas M0 and a free Redis provider such as Upstash, then enter their connection URLs as Render secrets. The Render service needs `MONGODB_URI`, `REDIS_URL`, and `FIREBASE_SERVICE_ACCOUNT_JSON`; add `GROQ_API_KEY` for chat, `TAVILY_API_KEY` for web search, and `IMAGE_KIT_PRIVATE_KEY` for document and artifact storage as needed. Google/Gemini is optional if Groq is configured. Never commit secrets to GitHub. Provider free tiers have storage, request, and usage caps.
+
+New document uploads use ImageKit, because Render's filesystem is temporary. Existing local MongoDB and Redis data are separate and are not copied automatically; MongoDB accounts and chats need a deliberate migration if they should be preserved. Do not point hosted services at localhost or Docker-only hostnames.
+
+Image generation remains unavailable when the laptop is off on the all-free setup: the existing Stable Diffusion/ComfyUI model needs the laptop's GPU, while this hosted service has no GPU. The hosted UI now explains this instead of returning a misleading tunnel or server error. A hosted GPU or paid image API is required for laptop-independent image generation.
+
+## Deploy steps
+
+1. Push the project to the connected GitHub repository.
+2. In Render, create a Blueprint from that repository and select `render.yaml`.
+3. Create free MongoDB Atlas and Redis credentials if you do not already have hosted free databases. Keep databases on their free plans.
+4. Add the environment secrets listed above in Render, then deploy.
+5. Verify `https://nexora-ai-api.onrender.com/health` returns `{"status":"ok"}`. Once the Render service is live, redeploy the Vercel frontend so its API rewrite reaches it.

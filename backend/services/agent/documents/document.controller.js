@@ -1,15 +1,12 @@
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { readFile, unlink } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import multer from "multer";
 import UploadedDocument from "../models/document.model.js";
 import DocumentChunk from "../models/documentChunk.model.js";
 import { extractDocument } from "./documentIngestion.js";
 import { deleteFromImageKit, uploadToImageKit } from "../config/imagekit.js";
 
-const storageDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../storage/documents");
 const MAX_FILE_SIZE = 12 * 1024 * 1024;
-await mkdir(storageDirectory, { recursive: true });
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -50,21 +47,13 @@ export const uploadDocument = async (req, res) => {
   if (!userId) return res.status(401).json({ message: "Sign in before uploading documents." });
   if (!req.file) return res.status(400).json({ message: "Choose a file to upload." });
 
-  let storagePath;
   let imageKitFileId;
   let savedDocument;
   try {
     const extracted = await extractDocument(req.file);
-    const extension = path.extname(extracted.fileName).toLowerCase();
-    let fileUrl;
-    if (extension === ".pdf") {
-      const stored = await uploadToImageKit({ buffer: req.file.buffer, fileName: extracted.fileName, folder: "/nexora/documents", mimeType: extracted.mimeType });
-      fileUrl = stored.url;
-      imageKitFileId = stored.fileId;
-    } else {
-      storagePath = path.join(storageDirectory, `${Date.now()}-${Math.random().toString(16).slice(2)}${extension}`);
-      await writeFile(storagePath, req.file.buffer, { flag: "wx" });
-    }
+    const stored = await uploadToImageKit({ buffer: req.file.buffer, fileName: extracted.fileName, folder: "/nexora/documents", mimeType: extracted.mimeType });
+    const fileUrl = stored.url;
+    imageKitFileId = stored.fileId;
 
     savedDocument = await UploadedDocument.create({
       userId,
@@ -72,7 +61,6 @@ export const uploadDocument = async (req, res) => {
       mimeType: extracted.mimeType,
       size: req.file.size,
       pageCount: extracted.pageCount,
-      storagePath,
       fileUrl,
       imageKitFileId,
       status: "ready",
@@ -95,7 +83,6 @@ export const uploadDocument = async (req, res) => {
         DocumentChunk.deleteMany({ documentId: savedDocument._id, userId }),
       ]);
     }
-    if (storagePath) await unlink(storagePath).catch(() => {});
     if (imageKitFileId) await deleteFromImageKit(imageKitFileId).catch(() => {});
     if (error.message?.startsWith("This file") || error.message?.startsWith("PDFs are") || error.message?.startsWith("Supported files") || error.message?.startsWith("The selected") || error.message?.startsWith("No readable") || error.message?.startsWith("This document")) {
       return res.status(400).json({ message: error.message });
@@ -155,9 +142,13 @@ export const deleteDocument = async (req, res) => {
     await Promise.all([
       DocumentChunk.deleteMany({ documentId: document._id, userId }),
       UploadedDocument.deleteOne({ _id: document._id, userId }),
-      document.imageKitFileId ? deleteFromImageKit(document.imageKitFileId) : unlink(document.storagePath).catch((error) => {
-        if (error.code !== "ENOENT") throw error;
-      }),
+      document.imageKitFileId
+        ? deleteFromImageKit(document.imageKitFileId)
+        : document.storagePath
+          ? unlink(document.storagePath).catch((error) => {
+            if (error.code !== "ENOENT") throw error;
+          })
+          : Promise.resolve(),
     ]);
     return res.json({ deleted: true });
   } catch (error) {

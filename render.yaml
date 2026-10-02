@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: nexora-ai-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./backend/hosted/Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXORA_HOSTED_FREE
+        value: "true"
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: PORT
+        value: "10000"
+      - key: FRONTEND_URLS
+        value: https://nexora-frontend-beta.vercel.app
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: IMAGE_KIT_PRIVATE_KEY
+        sync: false

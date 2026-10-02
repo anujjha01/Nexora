@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://medal-redhead-half-future.trycloudflare.com/api/:path*"
+      "destination": "https://nexora-ai-api.onrender.com/api/:path*"
     }
   ],
   "headers": [
