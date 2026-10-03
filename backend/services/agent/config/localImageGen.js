@@ -124,3 +124,4 @@ export const generateLocalImage = async (prompt) => {
   }
   throw new Error("Local image generation took more than 8 minutes. Try again after the first model load finishes.");
 };
+

@@ -30,7 +30,16 @@ To keep the entire hosting setup free, create/use MongoDB Atlas M0 and enter its
 
 New document uploads use ImageKit, because Render's filesystem is temporary. Existing local MongoDB and Redis data are separate and are not copied automatically; MongoDB accounts and chats need a deliberate migration if they should be preserved. Do not point hosted services at localhost or Docker-only hostnames.
 
-Image generation remains unavailable when the laptop is off on the all-free setup: the existing Stable Diffusion/ComfyUI model needs the laptop's GPU, while this hosted service has no GPU. The hosted UI now explains this instead of returning a misleading tunnel or server error. A hosted GPU or paid image API is required for laptop-independent image generation.
+Image generation can use the owner's laptop GPU on the all-free setup. The laptop must stay awake and online, with the worker and Cloudflare tunnel running; when it disconnects, users receive an offline message. The relay is protected by a shared random secret, accepts only the registered Cloudflare Quick Tunnel address, and limits image jobs to one at a time. Quick Tunnels use temporary URLs and are intended for development/testing.
+
+To enable the optional laptop image worker:
+
+1. Set `NEXORA_LOCAL_IMAGE_TOKEN` in Render's backend environment to a random secret of at least 32 characters. Keep that same secret in `backend/.env` on the laptop. Do not commit or share this value.
+2. Run `scripts/install-cloudflared.ps1` once from PowerShell to download Cloudflare Tunnel and verify its SHA-256 checksum.
+3. Run `scripts/start-image-relay.ps1` to start the authenticated image worker, open the temporary HTTPS tunnel, and register its address with Render.
+4. Run `scripts/install-image-relay-startup.ps1` once to have Windows start the worker whenever you sign in.
+
+ComfyUI and the compatible Stable Diffusion checkpoint must already be installed on the laptop. A Cloudflare-managed domain and named tunnel are the better choice for a production-quality permanent URL.
 
 ## Deploy steps
 
@@ -38,4 +47,4 @@ Image generation remains unavailable when the laptop is off on the all-free setu
 2. In Render, create a Blueprint from that repository and select `render.yaml`.
 3. Create/use a free MongoDB Atlas M0 cluster. The Blueprint provisions the free Redis-compatible cache.
 4. Add the environment secrets listed above in Render, then deploy.
-5. Verify `https://nexora-ai-api.onrender.com/health` returns `{"status":"ok"}`. Once the Render service is live, redeploy the Vercel frontend so its API rewrite reaches it.
+5. Verify `https://nexora-ai-api-mqqk.onrender.com/health` returns `{"status":"ok"}`. Once the Render service is live, redeploy the Vercel frontend so its API rewrite reaches it.
