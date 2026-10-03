@@ -26,7 +26,6 @@ const makeWorkflow = (prompt, seed) => {
     "8": { class_type: "SaveImage", inputs: { filename_prefix: "nexora-realistic", images: ["7", 0] } },
   };
 };
-
 const requestJson = async (url, options = {}, description = "ComfyUI request") => {
   let response;
   try {

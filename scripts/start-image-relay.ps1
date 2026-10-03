@@ -53,10 +53,14 @@ try {
         }
 
         if ($tunnelUrl) {
-            Register-Tunnel $tunnelUrl
             while (-not $tunnelProcess.HasExited -and -not $relayProcess.HasExited) {
-                Start-Sleep -Seconds 240
-                try { Register-Tunnel $tunnelUrl } catch { Add-Content -LiteralPath (Join-Path $logs "image-relay.stderr.log") -Value "Tunnel registration refresh failed: $($_.Exception.Message)" }
+                try {
+                    Register-Tunnel $tunnelUrl
+                    Start-Sleep -Seconds 240
+                } catch {
+                    Add-Content -LiteralPath (Join-Path $logs "registration.log") -Value "Tunnel registration retry: $($_.Exception.Message)"
+                    Start-Sleep -Seconds 15
+                }
             }
         } else {
             Start-Sleep -Seconds 10
