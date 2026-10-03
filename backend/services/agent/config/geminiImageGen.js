@@ -40,7 +40,7 @@ const reserveDailyFallback = async (userId) => {
 
 export const generateGeminiImage = async (prompt, userId) => {
   if (process.env.GEMINI_IMAGE_FALLBACK_ENABLED !== "true") {
-    throw new Error("Your laptop image generator is offline. Cloud image fallback is not enabled on this service.");
+    throw new Error("Your laptop image generator is offline. Gemini cloud image generation uses a paid API and is currently turned off; keep the laptop online for free local generation.");
   }
 
   const apiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
