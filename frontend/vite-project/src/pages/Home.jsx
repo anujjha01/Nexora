@@ -10,6 +10,33 @@ import SideBar from "../components/SideBar";
 import ChatArea from "../components/ChatArea";
 import Artifact from "../components/Artifact";
 
+const BACKEND_HEALTH_URL = "https://nexora-ai-api-mqqk.onrender.com/health";
+const BACKEND_STARTUP_LIMIT_MS = 90_000;
+const HEALTH_CHECK_INTERVAL_MS = 5_000;
+
+async function waitForBackend(onWait) {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < BACKEND_STARTUP_LIMIT_MS) {
+    const remainingSeconds = Math.max(0, Math.ceil((BACKEND_STARTUP_LIMIT_MS - (Date.now() - startedAt)) / 1000));
+    onWait(remainingSeconds);
+
+    try {
+      const response = await fetch(BACKEND_HEALTH_URL, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(8_000),
+      });
+      if (response.ok) return;
+    } catch {
+      // A sleeping free Render service may not respond until it has started.
+    }
+
+    await new Promise((resolve) => window.setTimeout(resolve, HEALTH_CHECK_INTERVAL_MS));
+  }
+
+  throw new Error("The backend is taking longer than expected to wake up. Please wait a little and try again.");
+}
+
 function Home() {
   const { userData } = useSelector((state) => state.user);
   const { message = [] } = useSelector((state) => state.message);
@@ -17,6 +44,8 @@ function Home() {
   const [artifactOpen, setArtifactOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [isWakingBackend, setIsWakingBackend] = useState(false);
+  const [wakeSecondsLeft, setWakeSecondsLeft] = useState(null);
 
   useEffect(() => {
     const latestAssistant = [...message].reverse().find((item) => item?.role === "assistant");
@@ -46,13 +75,19 @@ function Home() {
     try {
       const data = await signInWithPopup(auth, googleProvider);
       const token = await data.user.getIdToken();
+      setIsWakingBackend(true);
+      await waitForBackend(setWakeSecondsLeft);
       await handleLogin(token);
     } catch (error) {
       console.log("Google login error:", error);
       const backendMessage = error.response?.data?.message;
-      setLoginError(
-        backendMessage || error.message || "Google sign-in failed. Please try again.",
-      );
+      const isStartupTimeout = error.message?.includes("taking longer than expected");
+      setLoginError(isStartupTimeout
+        ? error.message
+        : backendMessage || error.message || "Google sign-in failed. Please try again.");
+    } finally {
+      setIsWakingBackend(false);
+      setWakeSecondsLeft(null);
     }
   };
 
@@ -77,11 +112,18 @@ function Home() {
             <button
               className="w-full flex items-center justify-center gap-3 py-[11px] rounded-xl text-sm font-medium text-black/90 bg-white hover:bg-gray-200 transition-all duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
               onClick={googleLogin}
-              disabled={!auth || !googleProvider}
+              disabled={!auth || !googleProvider || isWakingBackend}
             >
               <FcGoogle size={15} />
-              Continue With Google
+              {isWakingBackend ? "Waking Nexora up..." : "Continue With Google"}
             </button>
+            {isWakingBackend && (
+              <p role="status" aria-live="polite" className="text-center text-xs leading-relaxed text-slate-300">
+                The free backend may be asleep. Waking it now; this usually takes about a minute
+                {wakeSecondsLeft !== null ? ` (up to ${Math.ceil(wakeSecondsLeft / 60)} min remaining)` : ""}.
+                Keep this page open.
+              </p>
+            )}
             {(!auth || !googleProvider || loginError) && (
               <p role="alert" className="text-center text-xs leading-relaxed text-amber-300">
                 {loginError || "Google sign-in needs the Firebase web API key to be configured."}
