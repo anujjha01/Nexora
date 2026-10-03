@@ -53,14 +53,31 @@ try {
         }
 
         if ($tunnelUrl) {
+            $nextRegistration = Get-Date
+            $consecutiveHealthFailures = 0
             while (-not $tunnelProcess.HasExited -and -not $relayProcess.HasExited) {
-                try {
-                    Register-Tunnel $tunnelUrl
-                    Start-Sleep -Seconds 240
-                } catch {
-                    Add-Content -LiteralPath (Join-Path $logs "registration.log") -Value "Tunnel registration retry: $($_.Exception.Message)"
-                    Start-Sleep -Seconds 15
+                if ((Get-Date) -ge $nextRegistration) {
+                    try {
+                        Register-Tunnel $tunnelUrl
+                        $nextRegistration = (Get-Date).AddSeconds(240)
+                    } catch {
+                        Add-Content -LiteralPath (Join-Path $logs "registration.log") -Value "Tunnel registration retry: $($_.Exception.Message)"
+                        $nextRegistration = (Get-Date).AddSeconds(15)
+                    }
                 }
+
+                try {
+                    $health = Invoke-RestMethod -Uri "$tunnelUrl/health" -TimeoutSec 8
+                    if ($health.status -eq "ok") { $consecutiveHealthFailures = 0 } else { $consecutiveHealthFailures++ }
+                } catch {
+                    $consecutiveHealthFailures++
+                }
+
+                if ($consecutiveHealthFailures -ge 3) {
+                    Add-Content -LiteralPath (Join-Path $logs "registration.log") -Value "Tunnel health failed three times; rotating the temporary tunnel."
+                    break
+                }
+                Start-Sleep -Seconds 20
             }
         } else {
             Start-Sleep -Seconds 10
