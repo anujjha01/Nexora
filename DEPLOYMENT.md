@@ -32,6 +32,8 @@ New document uploads use ImageKit, because Render's filesystem is temporary. Exi
 
 Image generation can use the owner's laptop GPU on the all-free setup. The laptop must stay awake and online, with the worker and Cloudflare tunnel running; when it disconnects, users receive an offline message. The relay is protected by a shared random secret, accepts only the registered Cloudflare Quick Tunnel address, and limits image jobs to one at a time. Quick Tunnels use temporary URLs and are intended for development/testing.
 
+When the laptop is unavailable, the hosted service can use Gemini image generation if `GEMINI_IMAGE_FALLBACK_ENABLED=true` and `GOOGLE_API_KEY` are set in Render. This is a paid API: the selected Gemini 3.1 Flash Lite image model is about $0.0336 per 1K image at current standard pricing. The app caps cloud fallback at 2 images per user per UTC day and 10 images total per UTC day (about $10/month at the cap for 30 days). Laptop GPU generation remains the first choice and uses no Gemini image quota.
+
 To enable the optional laptop image worker:
 
 1. Set `NEXORA_LOCAL_IMAGE_TOKEN` in Render's backend environment to a random secret of at least 32 characters. Keep that same secret in `backend/.env` on the laptop. Do not commit or share this value.

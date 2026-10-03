@@ -2,16 +2,29 @@ import GeneratedImage from "../models/generatedImage.model.js";
 import { deleteFromImageKit, isImageKitConfigured, uploadToImageKit } from "../config/imagekit.js";
 import { generateLocalImage } from "../config/localImageGen.js";
 import { generateLaptopImage } from "../config/laptopImageGen.js";
+import { generateGeminiImage } from "../config/geminiImageGen.js";
 
 export const imageGenAgent = async (state) => {
   if (!state.userId) return { ...state, aiResponse: "Please sign in before generating an image." };
   if (!isImageKitConfigured()) return { ...state, aiResponse: "Image storage is not configured. Add IMAGE_KIT_PRIVATE_KEY to the agent service environment." };
 
   let imageKitFileId;
+  let imageSource = "local image generator";
   try {
-    const { buffer, mimeType } = process.env.NEXORA_HOSTED_FREE === "true"
-      ? await generateLaptopImage(state.prompt)
-      : await generateLocalImage(state.prompt);
+    let generated;
+    if (process.env.NEXORA_HOSTED_FREE === "true") {
+      try {
+        generated = await generateLaptopImage(state.prompt);
+        imageSource = "your laptop GPU";
+      } catch (error) {
+        if (error.code !== "LAPTOP_IMAGE_OFFLINE") throw error;
+        generated = await generateGeminiImage(state.prompt, state.userId);
+        imageSource = "Gemini cloud fallback";
+      }
+    } else {
+      generated = await generateLocalImage(state.prompt);
+    }
+    const { buffer, mimeType } = generated;
     const extension = mimeType.split("/")[1]?.replace(/[^a-z0-9]/gi, "") || "img";
     const stored = await uploadToImageKit({ buffer, fileName: `nexora-${Date.now()}.${extension}`, folder: "/nexora/images", mimeType });
     imageKitFileId = stored.fileId;
@@ -26,7 +39,7 @@ export const imageGenAgent = async (state) => {
 
     return {
       ...state,
-      aiResponse: `**Realistic image generated**\n\n${state.prompt}\n\n[Open or download image](${stored.url})`,
+      aiResponse: `**Realistic image generated**\n\n${state.prompt}\n\nGenerated with ${imageSource}. [Open or download image](${stored.url})`,
       images: [stored.url],
     };
   } catch (error) {

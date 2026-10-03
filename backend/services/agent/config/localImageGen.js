@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { createWriteStream, existsSync, mkdirSync } from "node:fs";
+import { closeSync, existsSync, openSync } from "node:fs";
 import path from "node:path";
 import { randomInt, randomUUID } from "node:crypto";
 
@@ -65,14 +65,18 @@ const startComfyUI = async () => {
   }
 
   const logPath = path.join(root, "nexora-comfyui.log");
-  const log = createWriteStream(logPath, { flags: "a" });
-  const child = spawn(python, ["-s", "ComfyUI/main.py", "--windows-standalone-build", "--listen", "127.0.0.1", "--port", String(port), "--lowvram"], {
-    cwd: root,
-    windowsHide: true,
-    detached: true,
-    stdio: ["ignore", log, log],
-  });
-  child.on("error", (error) => log.write(`\nNexora launch error: ${error.message}\n`));
+  const logFd = openSync(logPath, "a");
+  let child;
+  try {
+    child = spawn(python, ["-s", "ComfyUI/main.py", "--windows-standalone-build", "--listen", "127.0.0.1", "--port", String(port), "--lowvram"], {
+      cwd: root,
+      windowsHide: true,
+      detached: true,
+      stdio: ["ignore", logFd, logFd],
+    });
+  } finally {
+    closeSync(logFd);
+  }
   child.unref();
 
   const deadline = Date.now() + 120000;

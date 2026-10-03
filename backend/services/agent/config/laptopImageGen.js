@@ -8,7 +8,11 @@ export const generateLaptopImage = async (prompt) => {
   if (!token) throw new Error("Laptop image generation is not configured on the hosted service yet.");
 
   const relayUrl = await redis.get(relayAddressKey);
-  if (!relayUrl) throw new Error("Your laptop image generator is offline. Turn on the laptop and start Nexora Image Worker to generate images.");
+  if (!relayUrl) {
+    const error = new Error("Your laptop image generator is offline. Turn on the laptop and start Nexora Image Worker to generate images.");
+    error.code = "LAPTOP_IMAGE_OFFLINE";
+    throw error;
+  }
 
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
   const callRelay = async (path, options = {}) => {
@@ -16,11 +20,15 @@ export const generateLaptopImage = async (prompt) => {
     try {
       response = await fetch(`${relayUrl}${path}`, { ...options, headers, signal: AbortSignal.timeout(15000) });
     } catch {
-      throw new Error("Your laptop image generator is unreachable. Make sure the laptop is awake, online, and Nexora Image Worker is running.");
+      const error = new Error("Your laptop image generator is unreachable. Make sure the laptop is awake, online, and Nexora Image Worker is running.");
+      error.code = "LAPTOP_IMAGE_OFFLINE";
+      throw error;
     }
     if (!response.ok) {
       const detail = await response.json().catch(() => ({}));
-      throw new Error(detail.message || `Laptop image worker returned HTTP ${response.status}.`);
+      const error = new Error(detail.message || `Laptop image worker returned HTTP ${response.status}.`);
+      if (response.status >= 500) error.code = "LAPTOP_IMAGE_OFFLINE";
+      throw error;
     }
     return response;
   };
