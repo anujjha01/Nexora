@@ -103,7 +103,7 @@ function Home() {
           <div className="mx-4 flex w-full max-w-[340px] flex-col gap-5 rounded-2xl border border-white/[0.08] bg-[#13151c] p-6 sm:p-7">
             <div className="flex flex-col gap-1 items-center text-center">
               <h2 className="text-[17px] font-semibold text-slate-100 tracking-tight">
-                Welcome to Nexora_AI
+                Welcome to Nexora AI
               </h2>
               <p className="text-[13px] text-slate-500">
                 Please login to continue using the app.

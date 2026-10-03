@@ -102,11 +102,7 @@ function SideBar({ mobileOpen = false, onCloseMobile }) {
 
           {!collapsed && (
             <>
-              <img
-                src="/nexora-logo-horizontal.png"
-                alt="Nexora AI"
-                className="h-8 min-w-0 flex-1 object-contain object-left mix-blend-lighten"
-              />
+              <span className="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight text-slate-100">Nexora AI</span>
               <span className="text-[10px] font-medium text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full tracking-wide">
                 Free
               </span>

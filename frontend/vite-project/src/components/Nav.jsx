@@ -10,7 +10,7 @@ function Nav({ artifactOpen, onToggleArtifact, onOpenSidebar }) {
         <button type="button" aria-label="Open navigation menu" onClick={onOpenSidebar} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-white/[0.06] hover:text-white lg:hidden">
           <Menu size={19} />
         </button>
-        <img src="/nexora-favicon.png" alt="" className="h-7 w-7 shrink-0 lg:hidden" />
+        <span className="shrink-0 text-sm font-semibold tracking-tight text-slate-100 lg:hidden">Nexora AI</span>
         <div className='hidden h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-indigo-500/20 bg-indigo-500/10 sm:flex'>
           <MessageSquare size={13} className='text-indigo-400' />
         </div>
@@ -21,7 +21,7 @@ function Nav({ artifactOpen, onToggleArtifact, onOpenSidebar }) {
           <div className='hidden shrink-0 rounded-full border border-white/[0.06] bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-slate-500 sm:block'>
             {message?.length} Messages
           </div>
-        </> : <img src="/nexora-logo-horizontal.png" alt="Nexora AI" className="hidden h-8 w-36 object-contain object-left mix-blend-lighten sm:block lg:hidden" />}
+        </> : <span className="hidden text-base font-semibold tracking-tight text-slate-100 sm:block lg:hidden">Nexora AI</span>}
         {selectedConversation && <button
           type="button"
           onClick={onToggleArtifact}
