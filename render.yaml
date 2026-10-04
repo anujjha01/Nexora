@@ -18,7 +18,7 @@ services:
       - key: PORT
         value: "10000"
       - key: FRONTEND_URLS
-        value: https://nexora-frontend-beta.vercel.app
+        value: https://nexora-frontend-beta.vercel.app,https://nexora-ask.vercel.app
       - key: MONGODB_URI
         sync: false
       - key: REDIS_URL
