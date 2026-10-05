@@ -39,20 +39,12 @@ async function waitForBackend(onWait) {
 
 function Home() {
   const { userData } = useSelector((state) => state.user);
-  const { message = [] } = useSelector((state) => state.message);
   const dispatch = useDispatch();
   const [artifactOpen, setArtifactOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [isWakingBackend, setIsWakingBackend] = useState(false);
   const [wakeSecondsLeft, setWakeSecondsLeft] = useState(null);
-
-  useEffect(() => {
-    const latestAssistant = [...message].reverse().find((item) => item?.role === "assistant");
-    if (typeof latestAssistant?.content === "string" && /```[^\n`]*\n[\s\S]*?```/.test(latestAssistant.content)) {
-      setArtifactOpen(true);
-    }
-  }, [message]);
 
   const handleLogin = async (token) => {
     const { data } = await api.post("/api/auth/login", { token });
