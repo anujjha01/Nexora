@@ -107,5 +107,13 @@ export const streamAgent = (req, res) => {
   });
   res.flushHeaders?.();
   const emit = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-  return runAgentRequest(req, res, emit);
+  // Image generation runs on the user's laptop and can take several minutes.
+  // Keep the SSE connection active while ComfyUI renders so hosting proxies
+  // don't treat the quiet period as a dead request.
+  const heartbeat = setInterval(() => {
+    if (!res.writableEnded) emit("status", { message: "Nexora is still working…" });
+  }, 15000);
+  const clearHeartbeat = () => clearInterval(heartbeat);
+  res.on("close", clearHeartbeat);
+  return runAgentRequest(req, res, emit).finally(clearHeartbeat);
 };

@@ -2,7 +2,6 @@ import GeneratedImage from "../models/generatedImage.model.js";
 import { deleteFromImageKit, isImageKitConfigured, uploadToImageKit } from "../config/imagekit.js";
 import { generateLocalImage } from "../config/localImageGen.js";
 import { generateLaptopImage } from "../config/laptopImageGen.js";
-import { generateGeminiImage } from "../config/geminiImageGen.js";
 
 export const imageGenAgent = async (state) => {
   if (!state.userId) return { ...state, aiResponse: "Please sign in before generating an image." };
@@ -13,14 +12,8 @@ export const imageGenAgent = async (state) => {
   try {
     let generated;
     if (process.env.NEXORA_HOSTED_FREE === "true") {
-      try {
-        generated = await generateLaptopImage(state.prompt);
-        imageSource = "your laptop GPU";
-      } catch (error) {
-        if (error.code !== "LAPTOP_IMAGE_OFFLINE") throw error;
-        generated = await generateGeminiImage(state.prompt, state.userId);
-        imageSource = "Gemini cloud fallback";
-      }
+      generated = await generateLaptopImage(state.prompt);
+      imageSource = "your laptop GPU";
     } else {
       generated = await generateLocalImage(state.prompt);
     }

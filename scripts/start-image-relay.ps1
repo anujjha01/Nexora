@@ -27,7 +27,9 @@ function Start-Relay {
 }
 
 function Register-Tunnel([string]$url) {
-    Invoke-RestMethod -Method Post -Uri "$apiBase/api/agent/local-image-relay/register" -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body (@{ url = $url } | ConvertTo-Json -Compress) -TimeoutSec 20 | Out-Null
+    # Render's free instance may need around a minute to wake before it can store
+    # the tunnel URL. Keep this registration alive long enough for that cold start.
+    Invoke-RestMethod -Method Post -Uri "$apiBase/api/agent/local-image-relay/register" -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body (@{ url = $url } | ConvertTo-Json -Compress) -TimeoutSec 120 | Out-Null
 }
 
 try {

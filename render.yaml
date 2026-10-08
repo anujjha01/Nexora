@@ -34,10 +34,6 @@ services:
         sync: false
       - key: GOOGLE_API_KEY
         sync: false
-      - key: GOOGLE_IMAGE_MODEL
-        value: gemini-3.1-flash-lite-image
-      - key: GEMINI_IMAGE_FALLBACK_ENABLED
-        value: "false"
       - key: TAVILY_API_KEY
         sync: false
       - key: IMAGE_KIT_PRIVATE_KEY
