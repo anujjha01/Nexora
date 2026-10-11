@@ -5,8 +5,17 @@ import { randomInt, randomUUID } from "node:crypto";
 
 const port = Number.parseInt(process.env.COMFYUI_PORT || "8188", 10) || 8188;
 const endpoint = () => (process.env.COMFYUI_URL || `http://127.0.0.1:${port}`).replace(/\/$/, "");
-const getDirectory = () => process.env.COMFYUI_DIRECTORY?.trim()
-  || path.join(process.env.LOCALAPPDATA || process.env.USERPROFILE || process.cwd(), "NexoraImageGen", "ComfyUI_windows_portable");
+const getDirectory = () => {
+  const configuredDirectory = process.env.COMFYUI_DIRECTORY?.trim();
+  if (configuredDirectory) return configuredDirectory;
+
+  // Prefer the actual Windows profile path. Sandboxed launchers may replace
+  // LOCALAPPDATA with an isolated app folder that does not contain ComfyUI.
+  const localAppData = process.env.USERPROFILE
+    ? path.join(process.env.USERPROFILE, "AppData", "Local")
+    : process.env.LOCALAPPDATA || process.cwd();
+  return path.join(localAppData, "NexoraImageGen", "ComfyUI_windows_portable");
+};
 const checkpoint = () => process.env.COMFYUI_CHECKPOINT?.trim() || "Realistic_Vision_V5.1_fp16-no-ema.safetensors";
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 let startPromise;

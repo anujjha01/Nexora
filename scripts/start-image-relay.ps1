@@ -5,6 +5,9 @@ $cloudflared = Join-Path $repoRoot "tools\cloudflared.exe"
 $node = (Get-Command node -ErrorAction Stop).Source
 $apiBase = "https://nexora-ai-api-mqqk.onrender.com"
 $relayPort = 8190
+# Codex and other sandboxes can override LOCALAPPDATA. Pin this worker to the
+# real Windows profile so both ComfyUI and its logs resolve consistently.
+$env:LOCALAPPDATA = Join-Path $env:USERPROFILE "AppData\Local"
 $logs = Join-Path $env:LOCALAPPDATA "NexoraImageGen\logs"
 New-Item -ItemType Directory -Force -Path $logs | Out-Null
 
@@ -17,8 +20,21 @@ if (-not (Test-Path -LiteralPath $cloudflared)) { throw "Install the Cloudflare 
 
 $env:NEXORA_LOCAL_IMAGE_TOKEN = $token
 $env:LOCAL_IMAGE_RELAY_PORT = [string]$relayPort
+if (-not $env:COMFYUI_DIRECTORY) {
+    $env:COMFYUI_DIRECTORY = Join-Path $env:USERPROFILE "AppData\Local\NexoraImageGen\ComfyUI_windows_portable"
+}
+$comfyPython = Join-Path $env:COMFYUI_DIRECTORY "python_embeded\python.exe"
+$comfyMain = Join-Path $env:COMFYUI_DIRECTORY "ComfyUI\main.py"
+if (-not (Test-Path -LiteralPath $comfyPython) -or -not (Test-Path -LiteralPath $comfyMain)) {
+    throw "ComfyUI was not found at '$env:COMFYUI_DIRECTORY'. Check the local ComfyUI installation path."
+}
+$relayMutex = [System.Threading.Mutex]::new($false, "Local\NexoraLaptopImageRelay")
+$ownsRelayMutex = $false
+try { $ownsRelayMutex = $relayMutex.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $ownsRelayMutex = $true }
+if (-not $ownsRelayMutex) { exit 0 }
 $relayProcess = $null
 $tunnelProcess = $null
+$tunnelRetrySeconds = 300
 
 function Start-Relay {
     $stdout = Join-Path $logs "image-relay.stdout.log"
@@ -29,7 +45,20 @@ function Start-Relay {
 function Register-Tunnel([string]$url) {
     # Render's free instance may need around a minute to wake before it can store
     # the tunnel URL. Keep this registration alive long enough for that cold start.
-    Invoke-RestMethod -Method Post -Uri "$apiBase/api/agent/local-image-relay/register" -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body (@{ url = $url } | ConvertTo-Json -Compress) -TimeoutSec 120 | Out-Null
+    try {
+        $registration = Invoke-RestMethod -Method Post -Uri "$apiBase/api/agent/local-image-relay/register" -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body (@{ url = $url } | ConvertTo-Json -Compress) -TimeoutSec 120
+        Add-Content -LiteralPath (Join-Path $logs "registration.log") -Value "Tunnel registered with the hosted service; expires in $($registration.expiresInSeconds) seconds."
+    } catch {
+        $detail = $_.Exception.Message
+        if ($_.Exception.Response) {
+            try {
+                $reader = [System.IO.StreamReader]::new($_.Exception.Response.GetResponseStream())
+                $detail = $reader.ReadToEnd()
+                $reader.Dispose()
+            } catch { }
+        }
+        throw "Tunnel registration failed: $detail"
+    }
 }
 
 try {
@@ -55,6 +84,7 @@ try {
         }
 
         if ($tunnelUrl) {
+            $tunnelRetrySeconds = 300
             $nextRegistration = Get-Date
             $consecutiveHealthFailures = 0
             while (-not $tunnelProcess.HasExited -and -not $relayProcess.HasExited) {
@@ -82,11 +112,17 @@ try {
                 Start-Sleep -Seconds 20
             }
         } else {
-            Start-Sleep -Seconds 10
+            Start-Sleep -Seconds $tunnelRetrySeconds
+            $tunnelRetrySeconds = [Math]::Min(300, $tunnelRetrySeconds * 2)
         }
         if ($tunnelProcess -and -not $tunnelProcess.HasExited) { Stop-Process -Id $tunnelProcess.Id -Force }
     }
+} catch {
+    Add-Content -LiteralPath (Join-Path $logs "launcher.stderr.log") -Value "Image relay launcher failed: $($_.Exception.Message)"
+    throw
 } finally {
     if ($tunnelProcess -and -not $tunnelProcess.HasExited) { Stop-Process -Id $tunnelProcess.Id -Force }
     if ($relayProcess -and -not $relayProcess.HasExited) { Stop-Process -Id $relayProcess.Id -Force }
+    if ($ownsRelayMutex) { $relayMutex.ReleaseMutex() }
+    $relayMutex.Dispose()
 }

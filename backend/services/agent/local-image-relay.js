@@ -48,7 +48,7 @@ app.post("/jobs", (req, res) => {
     .catch((error) => {
       console.error("Laptop image worker failed:", error);
       job.status = "error";
-      job.message = "Image generation failed on the laptop. Check the Nexora image worker log.";
+      job.message = `Image generation failed on the laptop: ${error.message || "Check the Nexora image worker log."}`;
     })
     .finally(() => { activeJob = false; });
 });

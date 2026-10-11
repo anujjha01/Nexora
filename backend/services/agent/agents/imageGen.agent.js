@@ -2,7 +2,6 @@ import GeneratedImage from "../models/generatedImage.model.js";
 import { deleteFromImageKit, isImageKitConfigured, uploadToImageKit } from "../config/imagekit.js";
 import { generateLocalImage } from "../config/localImageGen.js";
 import { generateLaptopImage } from "../config/laptopImageGen.js";
-import { generateCloudImage, isCloudImageGenerationConfigured } from "../config/cloudImageGen.js";
 
 export const imageGenAgent = async (state) => {
   if (!state.userId) return { ...state, aiResponse: "Please sign in before generating an image." };
@@ -12,12 +11,9 @@ export const imageGenAgent = async (state) => {
   let imageSource = "local image generator";
   try {
     let generated;
-    if (isCloudImageGenerationConfigured()) {
-      generated = await generateCloudImage(state.prompt, state.userId);
-      imageSource = "Nexora cloud image generation";
-    } else if (process.env.NEXORA_HOSTED_FREE === "true") {
+    if (process.env.NEXORA_HOSTED_FREE === "true") {
       generated = await generateLaptopImage(state.prompt);
-      imageSource = "the Nexora image worker";
+      imageSource = "your laptop GPU";
     } else {
       generated = await generateLocalImage(state.prompt);
     }

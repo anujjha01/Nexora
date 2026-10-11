@@ -38,8 +38,6 @@ services:
         sync: false
       - key: IMAGE_KIT_PRIVATE_KEY
         sync: false
-      - key: STABILITY_API_KEY
-        sync: false
       - key: NEXORA_LOCAL_IMAGE_TOKEN
         sync: false
 

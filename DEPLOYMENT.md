@@ -12,7 +12,7 @@ The Compose stack runs the Vite frontend, API gateway, auth/chat/agent services,
 
 Use `docker compose logs -f` to inspect startup and `docker compose down` to stop the services. Persistent MongoDB, Redis, and agent document storage use named Docker volumes.
 
-For shared cloud image generation, set `STABILITY_API_KEY` and `IMAGE_KIT_PRIVATE_KEY` in the agent service environment. Without a cloud key, local Docker setups can generate through ComfyUI with a compatible Stable Diffusion checkpoint on the host at port 8188; set `COMFYUI_URL` if it runs elsewhere.
+Image generation runs locally through ComfyUI and the Stable Diffusion model installed on the laptop. Start ComfyUI and set `COMFYUI_DIRECTORY` if it is installed outside `%LOCALAPPDATA%\NexoraImageGen\ComfyUI_windows_portable`.
 
 ## Vercel
 
@@ -30,17 +30,9 @@ To keep the entire hosting setup free, create/use MongoDB Atlas M0 and enter its
 
 New document uploads use ImageKit, because Render's filesystem is temporary. Existing local MongoDB and Redis data are separate and are not copied automatically; MongoDB accounts and chats need a deliberate migration if they should be preserved. Do not point hosted services at localhost or Docker-only hostnames.
 
-Hosted image generation uses the Stability AI cloud API when `STABILITY_API_KEY` is set on the agent service. This lets signed-in users generate images without the owner's laptop running; successful generations use the provider account's credits and are subject to its limits. Keep the key only in the backend deployment environment, never in the Vite frontend or source control. ImageKit must also be configured to store and display finished images.
+Hosted image generation runs on the owner's laptop GPU. Keep the laptop awake and online, and keep the ComfyUI worker and Cloudflare tunnel running while users generate images. The relay is protected by a shared random secret and only accepts the registered Cloudflare Quick Tunnel address. ImageKit stores finished images.
 
-Without the cloud key, hosted free deployments can still use the optional laptop GPU relay. That path requires the laptop, ComfyUI, and its authenticated Cloudflare tunnel to remain online. Self-hosted installations can run ComfyUI directly. Both paths use ImageKit to store generated images.
-
-To enable shared hosted image generation:
-
-1. Create a Stability AI API key and add it to the agent service's `STABILITY_API_KEY` environment variable in Render. Keep the value private. Successful image generation consumes provider credits; check the provider's current pricing and limits before enabling this for public users.
-2. Ensure `IMAGE_KIT_PRIVATE_KEY` is set so generated images can be stored and shown to users.
-3. Redeploy the backend service. A running process will not see newly added environment values until it restarts.
-
-To use the optional laptop image worker instead:
+To enable the laptop image worker:
 
 1. Set `NEXORA_LOCAL_IMAGE_TOKEN` in Render's backend environment to a random secret of at least 32 characters. Keep that same secret in `backend/.env` on the laptop. Do not commit or share this value.
 2. Run `scripts/install-cloudflared.ps1` once from PowerShell to download Cloudflare Tunnel and verify its SHA-256 checksum.
