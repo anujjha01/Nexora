@@ -83,7 +83,7 @@ const runAgentRequest = async (req, res, emit = null) => {
       return reply(503, { message: "The assistant replied, but Nexora could not save the response. Check Redis and the chat service, then retry." });
     }
     if (imageRequested && stage === "run assistant agent") {
-      return reply(502, { message: "The local photo generator stopped before it could return a result. Check the agent logs for a ComfyUI startup or model error." });
+      return reply(502, { message: "Image generation stopped before it could return a result. Check the agent service logs and confirm the cloud provider key or local image worker is configured." });
     }
     if (error.message?.startsWith("AI provider is not configured")) {
       return reply(503, { message: error.message });
@@ -107,9 +107,8 @@ export const streamAgent = (req, res) => {
   });
   res.flushHeaders?.();
   const emit = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-  // Image generation runs on the user's laptop and can take several minutes.
-  // Keep the SSE connection active while ComfyUI renders so hosting proxies
-  // don't treat the quiet period as a dead request.
+  // Image generation can take several minutes. Keep the SSE connection alive
+  // while the cloud provider or local image worker renders the image.
   const heartbeat = setInterval(() => {
     if (!res.writableEnded) emit("status", { message: "Nexora is still working…" });
   }, 15000);

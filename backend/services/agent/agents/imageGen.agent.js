@@ -2,6 +2,7 @@ import GeneratedImage from "../models/generatedImage.model.js";
 import { deleteFromImageKit, isImageKitConfigured, uploadToImageKit } from "../config/imagekit.js";
 import { generateLocalImage } from "../config/localImageGen.js";
 import { generateLaptopImage } from "../config/laptopImageGen.js";
+import { generateCloudImage, isCloudImageGenerationConfigured } from "../config/cloudImageGen.js";
 
 export const imageGenAgent = async (state) => {
   if (!state.userId) return { ...state, aiResponse: "Please sign in before generating an image." };
@@ -11,9 +12,12 @@ export const imageGenAgent = async (state) => {
   let imageSource = "local image generator";
   try {
     let generated;
-    if (process.env.NEXORA_HOSTED_FREE === "true") {
+    if (isCloudImageGenerationConfigured()) {
+      generated = await generateCloudImage(state.prompt, state.userId);
+      imageSource = "Nexora cloud image generation";
+    } else if (process.env.NEXORA_HOSTED_FREE === "true") {
       generated = await generateLaptopImage(state.prompt);
-      imageSource = "your laptop GPU";
+      imageSource = "the Nexora image worker";
     } else {
       generated = await generateLocalImage(state.prompt);
     }
@@ -36,7 +40,7 @@ export const imageGenAgent = async (state) => {
       images: [stored.url],
     };
   } catch (error) {
-    console.error("Local image generation failed:", error);
+    console.error("Image generation failed:", error);
     if (imageKitFileId) await deleteFromImageKit(imageKitFileId).catch(() => {});
     const message = error.message?.startsWith("ImageKit")
       ? "ImageKit couldn’t store the generated image. Check IMAGE_KIT_PRIVATE_KEY and your ImageKit upload quota."
