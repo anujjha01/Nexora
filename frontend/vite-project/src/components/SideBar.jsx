@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import {
-  Coins,
   LogIn,
   LogOut,
   MessagesSquare,
@@ -235,9 +234,6 @@ function SideBar({ mobileOpen = false, onCloseMobile }) {
               {/* Action Buttons */}
               {!collapsed && (
                 <div className="flex items-center gap-1 shrink-0">
-                  <button className="flex items-center justify-center w-7 h-7 rounded-[7px] border-none bg-transparent text-yellow-600 cursor-pointer hover:bg-white/[0.08] hover:text-slate-400 transition-all duration-150">
-                    <Coins size={16} />
-                  </button>
                   <button
                     className="flex items-center justify-center w-7 h-7 rounded-[7px] border-none bg-transparent text-slate-600 cursor-pointer hover:bg-white/[0.08] hover:text-slate-400 transition-all duration-150"
                     onClick={handleLogout}
