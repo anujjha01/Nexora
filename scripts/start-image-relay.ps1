@@ -5,6 +5,7 @@ $cloudflared = Join-Path $repoRoot "tools\cloudflared.exe"
 $node = (Get-Command node -ErrorAction Stop).Source
 $apiBase = "https://nexora-ai-api-mqqk.onrender.com"
 $relayPort = 8190
+$comfyPort = 8188
 # Codex and other sandboxes can override LOCALAPPDATA. Pin this worker to the
 # real Windows profile so both ComfyUI and its logs resolve consistently.
 $env:LOCALAPPDATA = Join-Path $env:USERPROFILE "AppData\Local"
@@ -28,6 +29,36 @@ $comfyMain = Join-Path $env:COMFYUI_DIRECTORY "ComfyUI\main.py"
 if (-not (Test-Path -LiteralPath $comfyPython) -or -not (Test-Path -LiteralPath $comfyMain)) {
     throw "ComfyUI was not found at '$env:COMFYUI_DIRECTORY'. Check the local ComfyUI installation path."
 }
+$checkpoint = if ($env:COMFYUI_CHECKPOINT) { $env:COMFYUI_CHECKPOINT } else { "Realistic_Vision_V5.1_fp16-no-ema.safetensors" }
+$vaeName = if ($env:COMFYUI_VAE) { $env:COMFYUI_VAE } else { "vae-ft-mse-840000-ema-pruned.safetensors" }
+$checkpointPath = Join-Path $env:COMFYUI_DIRECTORY "ComfyUI\models\checkpoints\$checkpoint"
+$vaePath = Join-Path $env:COMFYUI_DIRECTORY "ComfyUI\models\vae\$vaeName"
+if (-not (Test-Path -LiteralPath $checkpointPath) -or -not (Test-Path -LiteralPath $vaePath)) {
+    throw "The configured ComfyUI checkpoint or VAE is missing. Check the ComfyUI models folders."
+}
+
+$comfyUrl = "http://127.0.0.1:$comfyPort"
+$comfyReady = $false
+try {
+    $null = Invoke-WebRequest -Uri "$comfyUrl/system_stats" -TimeoutSec 3 -UseBasicParsing
+    $comfyReady = $true
+} catch { }
+if (-not $comfyReady) {
+    $comfyStdout = Join-Path $env:COMFYUI_DIRECTORY "comfyui-startup.log"
+    $comfyStderr = Join-Path $env:COMFYUI_DIRECTORY "comfyui-stderr.log"
+    Start-Process -FilePath $comfyPython -ArgumentList @("-s", "ComfyUI/main.py", "--windows-standalone-build", "--listen", "127.0.0.1", "--port", [string]$comfyPort, "--lowvram") -WorkingDirectory $env:COMFYUI_DIRECTORY -WindowStyle Hidden -RedirectStandardOutput $comfyStdout -RedirectStandardError $comfyStderr | Out-Null
+    $comfyDeadline = (Get-Date).AddMinutes(2)
+    while ((Get-Date) -lt $comfyDeadline) {
+        try {
+            $null = Invoke-WebRequest -Uri "$comfyUrl/system_stats" -TimeoutSec 3 -UseBasicParsing
+            $comfyReady = $true
+            break
+        } catch { Start-Sleep -Seconds 2 }
+    }
+    if (-not $comfyReady) { throw "ComfyUI did not start. See '$comfyStderr' for its startup error." }
+}
+Start-Process $comfyUrl
+
 $relayMutex = [System.Threading.Mutex]::new($false, "Local\NexoraLaptopImageRelay")
 $ownsRelayMutex = $false
 try { $ownsRelayMutex = $relayMutex.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $ownsRelayMutex = $true }
