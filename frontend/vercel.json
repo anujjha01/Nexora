@@ -5,6 +5,10 @@
   "outputDirectory": "vite-project/dist",
   "rewrites": [
     {
+      "source": "/api/health",
+      "destination": "https://nexora-ai-api-mqqk.onrender.com/health"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://nexora-ai-api-mqqk.onrender.com/api/:path*"
     }
