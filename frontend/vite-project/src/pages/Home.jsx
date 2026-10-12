@@ -17,7 +17,7 @@ async function waitForBackend(onWait, shouldStop = () => false) {
   const startedAt = Date.now();
   const healthUrl = api.defaults.baseURL
     ? new URL("/health", api.defaults.baseURL).toString()
-    : "/api/health";
+    : "/backend-health";
 
   while (Date.now() - startedAt < BACKEND_STARTUP_LIMIT_MS && !shouldStop()) {
     const remainingSeconds = Math.max(0, Math.ceil((BACKEND_STARTUP_LIMIT_MS - (Date.now() - startedAt)) / 1000));
