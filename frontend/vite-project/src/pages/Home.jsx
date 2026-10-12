@@ -13,13 +13,13 @@ import Artifact from "../components/Artifact";
 const BACKEND_STARTUP_LIMIT_MS = 120_000;
 const HEALTH_CHECK_INTERVAL_MS = 5_000;
 
-async function waitForBackend(onWait) {
+async function waitForBackend(onWait, shouldStop = () => false) {
   const startedAt = Date.now();
   const healthUrl = api.defaults.baseURL
     ? new URL("/health", api.defaults.baseURL).toString()
     : "/api/health";
 
-  while (Date.now() - startedAt < BACKEND_STARTUP_LIMIT_MS) {
+  while (Date.now() - startedAt < BACKEND_STARTUP_LIMIT_MS && !shouldStop()) {
     const remainingSeconds = Math.max(0, Math.ceil((BACKEND_STARTUP_LIMIT_MS - (Date.now() - startedAt)) / 1000));
     onWait(remainingSeconds);
 
@@ -28,7 +28,7 @@ async function waitForBackend(onWait) {
         cache: "no-store",
         signal: AbortSignal.timeout(8_000),
       });
-      if (response.ok) return;
+      if (response.ok) return true;
     } catch {
       // A sleeping free Render service may not respond until it has started.
     }
@@ -36,6 +36,7 @@ async function waitForBackend(onWait) {
     await new Promise((resolve) => window.setTimeout(resolve, HEALTH_CHECK_INTERVAL_MS));
   }
 
+  if (shouldStop()) return false;
   throw new Error("The backend is taking longer than expected to wake up. Please wait a little and try again.");
 }
 
@@ -47,6 +48,7 @@ function Home() {
   const [loginError, setLoginError] = useState("");
   const [isSigningIn, setIsSigningIn] = useState(false);
   const signInInProgress = useRef(false);
+  const demoSelectedDuringSignIn = useRef(false);
   const [isWakingBackend, setIsWakingBackend] = useState(false);
   const [wakeSecondsLeft, setWakeSecondsLeft] = useState(null);
 
@@ -72,13 +74,15 @@ function Home() {
     }
 
     signInInProgress.current = true;
+    demoSelectedDuringSignIn.current = false;
     setIsSigningIn(true);
     setLoginError("");
     try {
       const data = await signInWithPopup(auth, googleProvider);
       const token = await data.user.getIdToken();
       setIsWakingBackend(true);
-      await waitForBackend(setWakeSecondsLeft);
+      const backendReady = await waitForBackend(setWakeSecondsLeft, () => demoSelectedDuringSignIn.current);
+      if (!backendReady || demoSelectedDuringSignIn.current) return;
       await handleLogin(token);
     } catch (error) {
       const backendMessage = error.response?.data?.message;
@@ -92,7 +96,7 @@ function Home() {
         "auth/network-request-failed": "Google sign-in could not reach Firebase. Check your connection and try again.",
       };
       setLoginError(isStartupTimeout
-        ? error.message
+        ? "The live backend is still waking. Click Try demo account for instant access, or try Google sign-in again later."
         : firebaseMessages[error.code] || backendMessage || "Google sign-in could not finish. Please try again.");
     } finally {
       setIsWakingBackend(false);
@@ -103,6 +107,7 @@ function Home() {
   };
 
   const enterDemo = () => {
+    demoSelectedDuringSignIn.current = true;
     const demoUser = {
       id: "nexora-demo-user",
       name: "Demo User",
@@ -154,7 +159,7 @@ function Home() {
               type="button"
               className="w-full rounded-xl border border-indigo-400/25 bg-indigo-500/10 py-[11px] text-sm font-medium text-indigo-200 transition-colors hover:bg-indigo-500/20 disabled:opacity-60"
               onClick={enterDemo}
-              disabled={isSigningIn || isWakingBackend}
+              disabled={isSigningIn && !isWakingBackend}
             >
               Try demo account
             </button>
