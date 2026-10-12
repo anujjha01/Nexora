@@ -4,25 +4,27 @@ import { auth, googleProvider } from "../../utils/firebase";
 import api from "../../utils/axios";
 import { FcGoogle } from "react-icons/fc";
 import { useDispatch, useSelector } from "react-redux";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { setUseradata } from "../redux/userSlice";
 import SideBar from "../components/SideBar";
 import ChatArea from "../components/ChatArea";
 import Artifact from "../components/Artifact";
 
-const BACKEND_HEALTH_URL = "https://nexora-ai-api-mqqk.onrender.com/health";
-const BACKEND_STARTUP_LIMIT_MS = 90_000;
+const BACKEND_STARTUP_LIMIT_MS = 120_000;
 const HEALTH_CHECK_INTERVAL_MS = 5_000;
 
 async function waitForBackend(onWait) {
   const startedAt = Date.now();
+  const healthUrl = api.defaults.baseURL
+    ? new URL("/health", api.defaults.baseURL).toString()
+    : "/api/health";
 
   while (Date.now() - startedAt < BACKEND_STARTUP_LIMIT_MS) {
     const remainingSeconds = Math.max(0, Math.ceil((BACKEND_STARTUP_LIMIT_MS - (Date.now() - startedAt)) / 1000));
     onWait(remainingSeconds);
 
     try {
-      const response = await fetch(BACKEND_HEALTH_URL, {
+      const response = await fetch(healthUrl, {
         cache: "no-store",
         signal: AbortSignal.timeout(8_000),
       });
@@ -43,6 +45,8 @@ function Home() {
   const [artifactOpen, setArtifactOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const signInInProgress = useRef(false);
   const [isWakingBackend, setIsWakingBackend] = useState(false);
   const [wakeSecondsLeft, setWakeSecondsLeft] = useState(null);
 
@@ -58,11 +62,16 @@ function Home() {
   };
 
   const googleLogin = async () => {
+    // Firebase cancels an earlier popup if a second popup is opened on the
+    // same Auth instance. Lock synchronously to prevent double-click races.
+    if (signInInProgress.current) return;
     if (!auth || !googleProvider) {
       setLoginError("Google sign-in is not configured. Add VITE_FIREBASE_API_KEY to the deployment environment.");
       return;
     }
 
+    signInInProgress.current = true;
+    setIsSigningIn(true);
     setLoginError("");
     try {
       const data = await signInWithPopup(auth, googleProvider);
@@ -71,15 +80,24 @@ function Home() {
       await waitForBackend(setWakeSecondsLeft);
       await handleLogin(token);
     } catch (error) {
-      console.log("Google login error:", error);
       const backendMessage = error.response?.data?.message;
       const isStartupTimeout = error.message?.includes("taking longer than expected");
+      const firebaseMessages = {
+        "auth/cancelled-popup-request": "A Google sign-in window was already open. Finish that window or click the button again.",
+        "auth/popup-closed-by-user": "Google sign-in was cancelled. Click the button to try again.",
+        "auth/popup-blocked": "Your browser blocked Google's sign-in window. Allow pop-ups for this site, then try again.",
+        "auth/unauthorized-domain": `Google sign-in is not enabled for ${window.location.hostname}. Add this exact domain in Firebase Authentication settings under Authorized domains.`,
+        "auth/operation-not-allowed": "Google sign-in is disabled for this Firebase project. Enable the Google provider in Firebase Authentication settings.",
+        "auth/network-request-failed": "Google sign-in could not reach Firebase. Check your connection and try again.",
+      };
       setLoginError(isStartupTimeout
         ? error.message
-        : backendMessage || error.message || "Google sign-in failed. Please try again.");
+        : firebaseMessages[error.code] || backendMessage || "Google sign-in could not finish. Please try again.");
     } finally {
       setIsWakingBackend(false);
       setWakeSecondsLeft(null);
+      setIsSigningIn(false);
+      signInInProgress.current = false;
     }
   };
 
@@ -104,11 +122,16 @@ function Home() {
             <button
               className="w-full flex items-center justify-center gap-3 py-[11px] rounded-xl text-sm font-medium text-black/90 bg-white hover:bg-gray-200 transition-all duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
               onClick={googleLogin}
-              disabled={!auth || !googleProvider || isWakingBackend}
+              disabled={!auth || !googleProvider || isSigningIn || isWakingBackend}
             >
               <FcGoogle size={15} />
-              {isWakingBackend ? "Waking Nexora up..." : "Continue With Google"}
+              {isWakingBackend ? "Waking Nexora up..." : isSigningIn ? "Opening Google sign-in..." : "Continue With Google"}
             </button>
+            {isSigningIn && !isWakingBackend && (
+              <p role="status" aria-live="polite" className="text-center text-xs leading-relaxed text-slate-300">
+                Complete the Google sign-in window to continue.
+              </p>
+            )}
             {isWakingBackend && (
               <p role="status" aria-live="polite" className="text-center text-xs leading-relaxed text-slate-300">
                 The free backend may be asleep. Waking it now; this usually takes about a minute

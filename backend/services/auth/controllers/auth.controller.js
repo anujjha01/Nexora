@@ -4,6 +4,18 @@ import User from "../models/user.model.js";
 import { createConnection } from "mongoose";
 import redis from '../../../shared/redis/redis.js'
 
+const sessionCookieOptions = () => ({
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production" || process.env.COOKIE_SECURE === "true",
+    // Hosted deployments may serve the frontend and API from different sites.
+    // Cross-site session cookies require SameSite=None and HTTPS.
+    sameSite: process.env.NODE_ENV === "production" || process.env.COOKIE_SECURE === "true"
+        ? "none"
+        : "lax",
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60 * 1000
+});
+
 export const login = async (req, res) => {
     try {
         const { token } = req.body;
@@ -37,12 +49,7 @@ export const login = async (req, res) => {
             avatar : user.avatar
         }),"EX", 7 * 24 * 60 * 60)
 
-        res.cookie("session", sessionId, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production" || process.env.COOKIE_SECURE === "true",
-            sameSite: "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000
-        });
+        res.cookie("session", sessionId, sessionCookieOptions());
 
         return res.status(200).json({
             message: "Login successful",
@@ -65,7 +72,7 @@ export const logout = async (req,res)=>{
         const sessionId = req.cookies?.session
         await redis.del(`session : ${sessionId}`)
 
-        res.clearCookie("session");
+        res.clearCookie("session", sessionCookieOptions());
 
         return res.status(200).json({message : "logout successfully"});
     } catch (error) {
