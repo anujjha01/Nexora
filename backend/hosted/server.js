@@ -27,6 +27,7 @@ app.use(morgan("tiny"));
 
 app.get("/", (_req, res) => res.json({ message: "Nexora API is running" }));
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 app.post("/api/agent/local-image-relay/register", async (req, res) => {
   const expectedToken = process.env.NEXORA_LOCAL_IMAGE_TOKEN || "";
   const suppliedToken = req.get("authorization")?.replace(/^Bearer\s+/i, "") || "";
