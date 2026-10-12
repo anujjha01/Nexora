@@ -10,36 +10,6 @@ import SideBar from "../components/SideBar";
 import ChatArea from "../components/ChatArea";
 import Artifact from "../components/Artifact";
 
-const BACKEND_STARTUP_LIMIT_MS = 120_000;
-const HEALTH_CHECK_INTERVAL_MS = 5_000;
-
-async function waitForBackend(onWait, shouldStop = () => false) {
-  const startedAt = Date.now();
-  const healthUrl = api.defaults.baseURL
-    ? new URL("/health", api.defaults.baseURL).toString()
-    : "/backend-health";
-
-  while (Date.now() - startedAt < BACKEND_STARTUP_LIMIT_MS && !shouldStop()) {
-    const remainingSeconds = Math.max(0, Math.ceil((BACKEND_STARTUP_LIMIT_MS - (Date.now() - startedAt)) / 1000));
-    onWait(remainingSeconds);
-
-    try {
-      const response = await fetch(healthUrl, {
-        cache: "no-store",
-        signal: AbortSignal.timeout(8_000),
-      });
-      if (response.ok) return true;
-    } catch {
-      // A sleeping free Render service may not respond until it has started.
-    }
-
-    await new Promise((resolve) => window.setTimeout(resolve, HEALTH_CHECK_INTERVAL_MS));
-  }
-
-  if (shouldStop()) return false;
-  throw new Error("The backend is taking longer than expected to wake up. Please wait a little and try again.");
-}
-
 function Home() {
   const { userData } = useSelector((state) => state.user);
   const dispatch = useDispatch();
@@ -50,9 +20,8 @@ function Home() {
   const signInInProgress = useRef(false);
   const demoSelectedDuringSignIn = useRef(false);
   const [isWakingBackend, setIsWakingBackend] = useState(false);
-  const [wakeSecondsLeft, setWakeSecondsLeft] = useState(null);
 
-  const handleLogin = async (token) => {
+  const handleLogin = async (token, shouldCancel = () => false) => {
     const { data } = await api.post("/api/auth/login", { token });
     const user = data?.user || data;
 
@@ -60,6 +29,7 @@ function Home() {
       throw new Error("Sign-in succeeded, but Nexora could not create your app session. Please try again.");
     }
 
+    if (shouldCancel()) return;
     localStorage.removeItem("nexora-demo-user");
     dispatch(setUseradata(user));
   };
@@ -81,12 +51,9 @@ function Home() {
       const data = await signInWithPopup(auth, googleProvider);
       const token = await data.user.getIdToken();
       setIsWakingBackend(true);
-      const backendReady = await waitForBackend(setWakeSecondsLeft, () => demoSelectedDuringSignIn.current);
-      if (!backendReady || demoSelectedDuringSignIn.current) return;
-      await handleLogin(token);
+      await handleLogin(token, () => demoSelectedDuringSignIn.current);
     } catch (error) {
       const backendMessage = error.response?.data?.message;
-      const isStartupTimeout = error.message?.includes("taking longer than expected");
       const firebaseMessages = {
         "auth/cancelled-popup-request": "A Google sign-in window was already open. Finish that window or click the button again.",
         "auth/popup-closed-by-user": "Google sign-in was cancelled. Click the button to try again.",
@@ -95,12 +62,15 @@ function Home() {
         "auth/operation-not-allowed": "Google sign-in is disabled for this Firebase project. Enable the Google provider in Firebase Authentication settings.",
         "auth/network-request-failed": "Google sign-in could not reach Firebase. Check your connection and try again.",
       };
-      setLoginError(isStartupTimeout
-        ? "The live backend is still waking. Click Try demo account for instant access, or try Google sign-in again later."
-        : firebaseMessages[error.code] || backendMessage || "Google sign-in could not finish. Please try again.");
+      setLoginError(
+        firebaseMessages[error.code]
+          || backendMessage
+          || (error.code === "ERR_NETWORK"
+            ? "Nexora could not reach the sign-in service. Please try again, or choose the demo account."
+            : "Google sign-in could not finish. Please try again.")
+      );
     } finally {
       setIsWakingBackend(false);
-      setWakeSecondsLeft(null);
       setIsSigningIn(false);
       signInInProgress.current = false;
     }
@@ -173,9 +143,7 @@ function Home() {
             )}
             {isWakingBackend && (
               <p role="status" aria-live="polite" className="text-center text-xs leading-relaxed text-slate-300">
-                The free backend may be asleep. Waking it now; this usually takes about a minute
-                {wakeSecondsLeft !== null ? ` (up to ${Math.ceil(wakeSecondsLeft / 60)} min remaining)` : ""}.
-                Keep this page open.
+                Nexora is connecting your account. The free backend can take a little while to wake up.
               </p>
             )}
             {(!auth || !googleProvider || loginError) && (
