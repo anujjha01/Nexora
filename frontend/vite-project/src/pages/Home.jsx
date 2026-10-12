@@ -58,6 +58,7 @@ function Home() {
       throw new Error("Sign-in succeeded, but Nexora could not create your app session. Please try again.");
     }
 
+    localStorage.removeItem("nexora-demo-user");
     dispatch(setUseradata(user));
   };
 
@@ -101,6 +102,28 @@ function Home() {
     }
   };
 
+  const enterDemo = () => {
+    const demoUser = {
+      id: "nexora-demo-user",
+      name: "Demo User",
+      email: "demo@nexora.local",
+      isDemo: true,
+    };
+    if (!localStorage.getItem("nexora-demo-chats")) {
+      localStorage.setItem("nexora-demo-chats", JSON.stringify([{
+        _id: "demo-welcome",
+        title: "Welcome to Nexora",
+        messages: [
+          { role: "user", content: "What can I do in this demo?" },
+          { role: "assistant", content: "Explore the Nexora chat workspace, start new chats, and try the suggested prompts. Your demo conversations are saved in this browser. Live AI, images, and document tools need the hosted services to be connected." },
+        ],
+      }]));
+    }
+    localStorage.setItem("nexora-demo-user", JSON.stringify(demoUser));
+    dispatch(setUseradata(demoUser));
+    setLoginError("");
+  };
+
   return (
     <div className="flex h-[100dvh] min-h-0 w-full overflow-hidden bg-[#0d0f14] text-white">
       <SideBar mobileOpen={mobileSidebarOpen} onCloseMobile={() => setMobileSidebarOpen(false)} />
@@ -127,6 +150,17 @@ function Home() {
               <FcGoogle size={15} />
               {isWakingBackend ? "Waking Nexora up..." : isSigningIn ? "Opening Google sign-in..." : "Continue With Google"}
             </button>
+            <button
+              type="button"
+              className="w-full rounded-xl border border-indigo-400/25 bg-indigo-500/10 py-[11px] text-sm font-medium text-indigo-200 transition-colors hover:bg-indigo-500/20 disabled:opacity-60"
+              onClick={enterDemo}
+              disabled={isSigningIn || isWakingBackend}
+            >
+              Try demo account
+            </button>
+            <p className="-mt-3 text-center text-[11px] leading-relaxed text-slate-500">
+              Opens instantly with local sample chats. Demo chats stay on this device.
+            </p>
             {isSigningIn && !isWakingBackend && (
               <p role="status" aria-live="polite" className="text-center text-xs leading-relaxed text-slate-300">
                 Complete the Google sign-in window to continue.

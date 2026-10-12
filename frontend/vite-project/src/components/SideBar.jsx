@@ -36,6 +36,24 @@ function SideBar({ mobileOpen = false, onCloseMobile }) {
   const { userData } = useSelector((state) => state.user);
 
   useEffect(() => {
+    if (userData?.isDemo) {
+      try {
+        const saved = JSON.parse(localStorage.getItem("nexora-demo-chats") || "[]");
+        dispatch(setConversation(saved));
+        const first = saved[0] || null;
+        dispatch(setSelectedConversation(first));
+        dispatch(setMessage(first?.messages || []));
+      } catch {
+        dispatch(setConversation([]));
+      }
+      return;
+    }
+    if (!userData) {
+      dispatch(setConversation([]));
+      dispatch(setSelectedConversation(null));
+      dispatch(setMessage([]));
+      return;
+    }
     const getConvo = async () => {
       try {
         const data = await getConversation();
@@ -58,6 +76,14 @@ function SideBar({ mobileOpen = false, onCloseMobile }) {
   }, []);
 
   const handleCreateConversation = async () => {
+    if (userData?.isDemo) {
+      const demoConversation = { _id: `demo-${Date.now()}`, title: "New Chat", messages: [] };
+      dispatch(addConversation(demoConversation));
+      dispatch(setSelectedConversation(demoConversation));
+      dispatch(setMessage([]));
+      onCloseMobile?.();
+      return;
+    }
     try {
       const data = await createConversation();
       if (data) {
@@ -73,6 +99,14 @@ function SideBar({ mobileOpen = false, onCloseMobile }) {
   };
 
   const handleLogout = async () => {
+    if (userData?.isDemo) {
+      localStorage.removeItem("nexora-demo-user");
+      dispatch(setUseradata(null));
+      dispatch(setConversation([]));
+      dispatch(setSelectedConversation(null));
+      dispatch(setMessage([]));
+      return;
+    }
     try {
       await logout();
       dispatch(setUseradata(null));
@@ -146,6 +180,10 @@ function SideBar({ mobileOpen = false, onCloseMobile }) {
                   dispatch(setSelectedConversation(conv));
                   dispatch(setMessage([])); // prevent visual flicker of old chat
                   onCloseMobile?.();
+                  if (userData?.isDemo) {
+                    dispatch(setMessage(conv.messages || []));
+                    return;
+                  }
                   const data = await getMessages(conv?._id);
                   dispatch(setMessage(data));
                 }}
@@ -178,6 +216,16 @@ function SideBar({ mobileOpen = false, onCloseMobile }) {
                   <button
                     onClick={async (e) => {
                       e.stopPropagation();
+                      if (userData?.isDemo) {
+                        dispatch(removeConversation(conv._id));
+                        const remaining = conversation.filter((item) => item._id !== conv._id);
+                        localStorage.setItem("nexora-demo-chats", JSON.stringify(remaining));
+                        if (isActive) {
+                          dispatch(setSelectedConversation(null));
+                          dispatch(setMessage([]));
+                        }
+                        return;
+                      }
                       await deleteConversationApi(conv._id);
                       dispatch(removeConversation(conv._id));
                       if (isActive) {
@@ -225,7 +273,7 @@ function SideBar({ mobileOpen = false, onCloseMobile }) {
                       {userData?.name || "user"}
                     </p>
                     <p className="text-[11px] text-slate-500 mt-px truncate">
-                      Free Plan
+                      {userData?.isDemo ? "Demo mode · saved on this device" : "Free Plan"}
                     </p>
                   </div>
                 )}

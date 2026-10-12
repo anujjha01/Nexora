@@ -24,6 +24,7 @@ import { createConversation } from "../features/createConversation";
 import {
   setSelectedConversation,
   addConversation,
+  setConversation,
   updateConversationTitle,
 } from "../redux/conversationSlice";
 import updateConversation from "../features/updateConversation";
@@ -42,7 +43,8 @@ function ChatInput({ suggestedPrompt, onSuggestionHandled }) {
   const [documents, setDocuments] = useState([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
   const fileInputRef = useRef(null);
-  const { selectedConversation } = useSelector((state) => state.conversation);
+  const { selectedConversation, conversation = [] } = useSelector((state) => state.conversation);
+  const { userData } = useSelector((state) => state.user);
   const { isLoading } = useSelector((state) => state.message);
   const abortControllerRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -127,6 +129,31 @@ function ChatInput({ suggestedPrompt, onSuggestionHandled }) {
     setValue(""); // clear the input field immediately
 
     dispatch(addMessage({ role: "user", content: promptValue }));
+
+    if (userData?.isDemo) {
+      let demoConversation = selectedConversation;
+      if (!demoConversation) {
+        demoConversation = { _id: `demo-${Date.now()}`, title: promptValue.slice(0, 40), messages: [] };
+        dispatch(addConversation(demoConversation));
+        dispatch(setSelectedConversation(demoConversation));
+      }
+      const userMessage = { role: "user", content: promptValue };
+      const answer = getDemoAnswer(promptValue);
+      const assistantMessage = { role: "assistant", content: answer };
+      const messages = [...(demoConversation.messages || []), userMessage, assistantMessage];
+      const updatedConversation = {
+        ...demoConversation,
+        title: demoConversation.title === "New Chat" ? promptValue.slice(0, 40) : demoConversation.title,
+        messages,
+      };
+      dispatch(setSelectedConversation(updatedConversation));
+      dispatch(updateConversationTitle({ id: updatedConversation._id, title: updatedConversation.title }));
+      dispatch(setMessage(messages));
+      const chats = [updatedConversation, ...conversation.filter((item) => item._id !== updatedConversation._id)];
+      dispatch(setConversation(chats));
+      localStorage.setItem("nexora-demo-chats", JSON.stringify(chats));
+      return;
+    }
 
     let currentConversationId = selectedConversation?._id;
     let isNewConversation = false;
@@ -444,6 +471,23 @@ function ChatInput({ suggestedPrompt, onSuggestionHandled }) {
       </div>
     </div>
   );
+}
+
+function getDemoAnswer(prompt) {
+  const text = prompt.toLowerCase();
+  if (text.includes("image") || text.includes("picture") || text.includes("photo")) {
+    return "Image generation is available after connecting the live image service. In this demo, you can explore the chat interface and sample conversations.";
+  }
+  if (text.includes("rag")) {
+    return "RAG (retrieval-augmented generation) lets an AI search relevant information from your documents before answering. It combines retrieval with generation so answers can use your own source material.";
+  }
+  if (text.includes("redis")) {
+    return "Redis is a fast in-memory data store often used for caching, queues, and short-lived session data. Keeping frequently used data in memory helps applications respond quickly.";
+  }
+  if (text.includes("javascript") || text.includes("function") || text.includes("code")) {
+    return "I can help with that. For example, a JavaScript function can take an input, transform it, and return a result. Try describing the exact behavior you want and I can outline an implementation in this demo.";
+  }
+  return "Thanks for trying Nexora AI! This interactive demo works without the hosted backend and keeps your sample chats in this browser. Connect the backend to use live AI, image generation, and document tools.";
 }
 
 export default ChatInput;

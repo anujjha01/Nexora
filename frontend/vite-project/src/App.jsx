@@ -10,6 +10,15 @@ function App() {
 
   useEffect(() => {
     const getUser = async () => {
+      const savedDemoUser = localStorage.getItem("nexora-demo-user");
+      if (savedDemoUser) {
+        try {
+          dispatch(setUseradata(JSON.parse(savedDemoUser)));
+          return;
+        } catch {
+          localStorage.removeItem("nexora-demo-user");
+        }
+      }
       const data = await getCurrentUser();
       dispatch(setUseradata(data));
     };
