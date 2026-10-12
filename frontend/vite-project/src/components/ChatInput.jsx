@@ -16,7 +16,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import sendMessage from "../features/sendMessage";
+import sendMessage, { generateDemoImage } from "../features/sendMessage";
 import { useSelector, useDispatch } from "react-redux";
 import getMessages from "../features/getMessages";
 import { setMessage, addMessage, setLoading, setLoadingStatus } from "../redux/messageSlice";
@@ -131,6 +131,23 @@ function ChatInput({ suggestedPrompt, onSuggestionHandled }) {
     dispatch(addMessage({ role: "user", content: promptValue }));
 
     if (userData?.isDemo) {
+      const imageRequested = selectedAgent === "Image" || /\b(create|generate|draw|make|edit)\b.{0,45}\b(image|picture|illustration|artwork|photo)\b|\b(image|picture|illustration)\b.{0,35}\b(of|for)\b/i.test(promptValue);
+      let answer = getDemoAnswer(promptValue);
+      let images = [];
+      if (imageRequested) {
+        if (abortControllerRef.current) abortControllerRef.current.abort();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+        dispatch(setLoading(true));
+        dispatch(setLoadingStatus("Generating your image…"));
+        const result = await generateDemoImage(promptValue, controller.signal);
+        if (abortControllerRef.current !== controller) return;
+        abortControllerRef.current = null;
+        dispatch(setLoading(false));
+        if (!result) return;
+        answer = result.error ? `Image generation failed. ${result.error}` : result.answer;
+        images = result.images || [];
+      }
       let demoConversation = selectedConversation;
       if (!demoConversation) {
         demoConversation = { _id: `demo-${Date.now()}`, title: promptValue.slice(0, 40), messages: [] };
@@ -138,8 +155,7 @@ function ChatInput({ suggestedPrompt, onSuggestionHandled }) {
         dispatch(setSelectedConversation(demoConversation));
       }
       const userMessage = { role: "user", content: promptValue };
-      const answer = getDemoAnswer(promptValue);
-      const assistantMessage = { role: "assistant", content: answer };
+      const assistantMessage = { role: "assistant", content: answer, images };
       const messages = [...(demoConversation.messages || []), userMessage, assistantMessage];
       const updatedConversation = {
         ...demoConversation,
@@ -476,7 +492,7 @@ function ChatInput({ suggestedPrompt, onSuggestionHandled }) {
 function getDemoAnswer(prompt) {
   const text = prompt.toLowerCase();
   if (text.includes("image") || text.includes("picture") || text.includes("photo")) {
-    return "Image generation is available after connecting the live image service. In this demo, you can explore the chat interface and sample conversations.";
+    return "Choose the Image agent or describe an image to generate it in the demo.";
   }
   if (text.includes("rag")) {
     return "RAG (retrieval-augmented generation) lets an AI search relevant information from your documents before answering. It combines retrieval with generation so answers can use your own source material.";
@@ -487,7 +503,7 @@ function getDemoAnswer(prompt) {
   if (text.includes("javascript") || text.includes("function") || text.includes("code")) {
     return "I can help with that. For example, a JavaScript function can take an input, transform it, and return a result. Try describing the exact behavior you want and I can outline an implementation in this demo.";
   }
-  return "Thanks for trying Nexora AI! This interactive demo works without the hosted backend and keeps your sample chats in this browser. Connect the backend to use live AI, image generation, and document tools.";
+  return "Thanks for trying Nexora AI! This demo keeps your sample chats in this browser. Image generation is available; sign in for live AI and document tools.";
 }
 
 export default ChatInput;

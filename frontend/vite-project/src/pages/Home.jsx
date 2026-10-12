@@ -90,7 +90,7 @@ function Home() {
         title: "Welcome to Nexora",
         messages: [
           { role: "user", content: "What can I do in this demo?" },
-          { role: "assistant", content: "Explore the Nexora chat workspace, start new chats, and try the suggested prompts. Your demo conversations are saved in this browser. Live AI, images, and document tools need the hosted services to be connected." },
+          { role: "assistant", content: "Explore the Nexora chat workspace, start new chats, and try the suggested prompts. Your demo conversations are saved in this browser. You can generate images in the demo; live AI and document tools require signing in." },
         ],
       }]));
     }

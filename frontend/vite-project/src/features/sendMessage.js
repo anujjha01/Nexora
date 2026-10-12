@@ -47,4 +47,22 @@ async function sendMessage(payload, signal, onProgress = () => {}) {
   }
 }
 
+export async function generateDemoImage(prompt, signal) {
+  try {
+    const response = await fetch(new URL("/api/demo/image", window.location.origin), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+      signal,
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) return { error: result.message || `Image generation failed (${response.status}).` };
+    return { answer: result.answer, images: result.images || [] };
+  } catch (error) {
+    if (error.name === "AbortError") return null;
+    console.error(error);
+    return { error: error.message || "Image generation failed. Please try again." };
+  }
+}
+
 export default sendMessage;

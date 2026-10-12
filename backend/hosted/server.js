@@ -10,6 +10,7 @@ import chatRoutes from "../services/chat/routes/chat.routes.js";
 import agentRoutes from "../services/agent/routes/agent.route.js";
 import protect from "../gateway/middleware/auth.middleware.js";
 import { getCurrentUser } from "../gateway/middleware/controllers/user.controller.js";
+import { generateDemoImage } from "../services/agent/controllers/demoImage.controller.js";
 
 const app = express();
 const port = Number(process.env.PORT || 10000);
@@ -38,6 +39,26 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/api/auth", authRoutes);
 app.get("/api/me", protect, getCurrentUser);
+
+// The public demo is anonymous, so cap image requests per client to protect the hosted provider quota.
+const demoImageRequests = new Map();
+const demoImageWindowMs = 60 * 60 * 1000;
+const demoImageLimit = 3;
+app.post("/api/demo/image", async (req, res, next) => {
+  const now = Date.now();
+  const clientIp = req.ip || req.socket.remoteAddress || "unknown";
+  const entry = demoImageRequests.get(clientIp);
+  if (entry && now - entry.startedAt < demoImageWindowMs && entry.count >= demoImageLimit) {
+    return res.status(429).json({ message: "The demo image limit is 3 generations per hour. Sign in or try again later." });
+  }
+  if (!entry || now - entry.startedAt >= demoImageWindowMs) demoImageRequests.set(clientIp, { startedAt: now, count: 1 });
+  else entry.count += 1;
+  try {
+    await generateDemoImage(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
 
 const addUserHeader = (req, _res, next) => {
   req.headers["x-user-id"] = String(req.user.userID);
