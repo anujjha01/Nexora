@@ -4,7 +4,6 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
 import mongoose from "mongoose";
-import { timingSafeEqual } from "node:crypto";
 import redis from "../shared/redis/redis.js";
 import authRoutes from "../services/auth/routes/auth.route.js";
 import chatRoutes from "../services/chat/routes/chat.routes.js";
@@ -18,9 +17,18 @@ const allowedOrigins = (process.env.FRONTEND_URLS || "https://nexora-frontend-be
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
+const vercelPreviewPattern = /^https:\/\/[a-z0-9-]+-anujjha01s-projects\.vercel\.app$/i;
 
 app.set("trust proxy", 1);
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin) || vercelPreviewPattern.test(origin)) {
+      return callback(null, origin || false);
+    }
+    return callback(new Error("Origin is not allowed by Nexora."));
+  },
+  credentials: true
+}));
 app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
 app.use(morgan("tiny"));
@@ -28,28 +36,6 @@ app.use(morgan("tiny"));
 app.get("/", (_req, res) => res.json({ message: "Nexora API is running" }));
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
-app.post("/api/agent/local-image-relay/register", async (req, res) => {
-  const expectedToken = process.env.NEXORA_LOCAL_IMAGE_TOKEN || "";
-  const suppliedToken = req.get("authorization")?.replace(/^Bearer\s+/i, "") || "";
-  const expected = Buffer.from(expectedToken);
-  const supplied = Buffer.from(suppliedToken);
-  if (expected.length < 32 || supplied.length !== expected.length || !timingSafeEqual(expected, supplied)) {
-    return res.status(401).json({ message: "Unauthorized." });
-  }
-
-  let relayUrl;
-  try {
-    relayUrl = new URL(String(req.body?.url || ""));
-  } catch {
-    return res.status(400).json({ message: "A valid laptop tunnel URL is required." });
-  }
-  if (relayUrl.protocol !== "https:" || !relayUrl.hostname.endsWith(".trycloudflare.com") || relayUrl.pathname !== "/" || relayUrl.search || relayUrl.hash) {
-    return res.status(400).json({ message: "Only an HTTPS Cloudflare Quick Tunnel URL is accepted." });
-  }
-
-  await redis.set("nexora:local-image-relay:url", relayUrl.origin, "EX", 900);
-  return res.json({ status: "registered", expiresInSeconds: 900 });
-});
 app.use("/api/auth", authRoutes);
 app.get("/api/me", protect, getCurrentUser);
 

@@ -96,9 +96,6 @@ services:
       MONGODB_URI: mongodb://mongo:27017/nexora
       REDIS_URL: redis://redis:6379
       CHAT_SERVICE: http://chat:8002
-      COMFYUI_URL: ${COMFYUI_URL:-http://host.docker.internal:8188}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     volumes:
       - agent_storage:/app/backend/services/agent/storage
     depends_on:

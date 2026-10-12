@@ -108,7 +108,7 @@ export const streamAgent = (req, res) => {
   res.flushHeaders?.();
   const emit = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   // Image generation can take several minutes. Keep the SSE connection alive
-  // while the laptop ComfyUI model renders the image.
+  // while the hosted image provider renders the image.
   const heartbeat = setInterval(() => {
     if (!res.writableEnded) emit("status", { message: "Nexora is still working…" });
   }, 15000);

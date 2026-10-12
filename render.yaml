@@ -11,8 +11,6 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: NEXORA_HOSTED_FREE
-        value: "true"
       - key: COOKIE_SECURE
         value: "true"
       - key: PORT
@@ -32,14 +30,14 @@ services:
         value: /etc/secrets/serviceAccountKey.json
       - key: GROQ_API_KEY
         sync: false
-      - key: GOOGLE_API_KEY
-        sync: false
       - key: TAVILY_API_KEY
         sync: false
       - key: IMAGE_KIT_PRIVATE_KEY
         sync: false
-      - key: NEXORA_LOCAL_IMAGE_TOKEN
+      - key: POLLINATIONS_API_KEY
         sync: false
+      - key: POLLINATIONS_IMAGE_MODEL
+        value: flux
 
   - type: keyvalue
     name: nexora-cache
