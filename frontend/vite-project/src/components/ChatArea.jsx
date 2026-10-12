@@ -3,7 +3,7 @@ import MessageList from './MessageList'
 import ChatInput from './ChatInput'
 import Nav from './Nav'
 
-function ChatArea({ artifactOpen, onToggleArtifact, onOpenSidebar }) {
+function ChatArea({ artifactOpen, onToggleArtifact, onOpenArtifact, onOpenSidebar }) {
   const [suggestedPrompt, setSuggestedPrompt] = useState('')
 
   return (
@@ -12,7 +12,7 @@ function ChatArea({ artifactOpen, onToggleArtifact, onOpenSidebar }) {
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         <MessageList onSuggestionClick={setSuggestedPrompt} />
       </div>
-      <ChatInput suggestedPrompt={suggestedPrompt} onSuggestionHandled={() => setSuggestedPrompt('')} />
+      <ChatInput suggestedPrompt={suggestedPrompt} onSuggestionHandled={() => setSuggestedPrompt('')} onOpenArtifact={onOpenArtifact} />
     </main>
   )
 }

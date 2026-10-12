@@ -103,7 +103,7 @@ function Home() {
     <div className="flex h-[100dvh] min-h-0 w-full overflow-hidden bg-[#0d0f14] text-white">
       <SideBar mobileOpen={mobileSidebarOpen} onCloseMobile={() => setMobileSidebarOpen(false)} />
       {mobileSidebarOpen && <button type="button" aria-label="Close navigation menu" onClick={() => setMobileSidebarOpen(false)} className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px] lg:hidden" />}
-      <ChatArea artifactOpen={artifactOpen} onToggleArtifact={() => setArtifactOpen((open) => !open)} onOpenSidebar={() => setMobileSidebarOpen(true)} />
+      <ChatArea artifactOpen={artifactOpen} onToggleArtifact={() => setArtifactOpen((open) => !open)} onOpenArtifact={() => setArtifactOpen(true)} onOpenSidebar={() => setMobileSidebarOpen(true)} />
       <Artifact open={artifactOpen} onClose={() => setArtifactOpen(false)} />
 
       {!userData && (

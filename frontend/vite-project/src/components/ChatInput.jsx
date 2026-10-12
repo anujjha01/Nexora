@@ -31,7 +31,7 @@ import updateConversation from "../features/updateConversation";
 import uploadDocument from "../features/uploadDocument";
 import { deleteDocument, getDocuments } from "../features/getDocuments";
 
-function ChatInput({ suggestedPrompt, onSuggestionHandled }) {
+function ChatInput({ suggestedPrompt, onSuggestionHandled, onOpenArtifact }) {
   const [value, setValue] = useState("");
   const [selectedAgent, setSelectedAgent] = useState("Auto");
   const [attachments, setAttachments] = useState([]);
@@ -248,6 +248,9 @@ function ChatInput({ suggestedPrompt, onSuggestionHandled }) {
       }
       dispatch(setMessage(fetchedMessages));
       setAttachments([]);
+      const generatedCode = typeof data.answer === "string" && /```[^\n`]+\n[\s\S]*?```/.test(data.answer);
+      const requestedWebsite = /\b(website|web app|webpage|landing page)\b/i.test(promptValue);
+      if (generatedCode && (selectedAgent === "Coding" || requestedWebsite)) onOpenArtifact?.();
     }
   };
 
@@ -429,6 +432,9 @@ function ChatInput({ suggestedPrompt, onSuggestionHandled }) {
             );
           })}
         </div>
+        {userData?.isDemo && selectedAgent === "Image" && (
+          <p className="px-1 text-[11px] text-slate-500">Demo limit: 3 image generations per hour.</p>
+        )}
 
         {/* Textarea + action buttons row */}
         <div className="flex min-w-0 items-end gap-1.5 sm:gap-2">
