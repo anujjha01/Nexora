@@ -65,6 +65,28 @@ export const login = async (req, res) => {
     }
 };
 
+export const demoLogin = async (_req, res) => {
+    try {
+        const userID = `demo-${crypto.randomUUID()}`;
+        const user = {
+            userID,
+            id: userID,
+            name: "Demo User",
+            email: "demo@nexora.local",
+            isDemo: true,
+        };
+        // Demo sessions use the same authenticated API as regular accounts, but
+        // get an isolated, temporary identity so their data cannot overlap.
+        const sessionId = crypto.randomUUID();
+        await redis.set(`session : ${sessionId}`, JSON.stringify(user), "EX", 24 * 60 * 60);
+        res.cookie("session", sessionId, { ...sessionCookieOptions(), maxAge: 24 * 60 * 60 * 1000 });
+        return res.status(200).json({ user });
+    } catch (error) {
+        console.error("DEMO LOGIN ERROR:", error);
+        return res.status(503).json({ message: "The demo account could not start. Please try again." });
+    }
+};
+
 
 
 export const logout = async (req,res)=>{

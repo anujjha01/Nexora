@@ -83,7 +83,13 @@ const runAgentRequest = async (req, res, emit = null) => {
       return reply(503, { message: "The assistant replied, but Nexora could not save the response. Check Redis and the chat service, then retry." });
     }
     if (imageRequested && stage === "run assistant agent") {
-      return reply(502, { message: "Image generation stopped before it could return a result. Check that your laptop is online and the Nexora Image Worker is running." });
+      const message = error.message || "The image provider stopped before returning a result.";
+      const status = /timed out|timeout/i.test(message)
+        ? 504
+        : error.status === 429 || error.status === 401 || error.status === 403 || /not configured/i.test(message)
+          ? 503
+          : 502;
+      return reply(status, { message: `Image generation failed. ${message}` });
     }
     if (error.message?.startsWith("AI provider is not configured")) {
       return reply(503, { message: error.message });

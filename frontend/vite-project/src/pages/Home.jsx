@@ -30,6 +30,7 @@ function Home() {
     }
 
     if (shouldCancel()) return;
+    localStorage.removeItem("nexora-logged-out");
     localStorage.removeItem("nexora-demo-user");
     dispatch(setUseradata(user));
   };
@@ -61,13 +62,19 @@ function Home() {
         "auth/unauthorized-domain": `Google sign-in is not enabled for ${window.location.hostname}. Add this exact domain in Firebase Authentication settings under Authorized domains.`,
         "auth/operation-not-allowed": "Google sign-in is disabled for this Firebase project. Enable the Google provider in Firebase Authentication settings.",
         "auth/network-request-failed": "Google sign-in could not reach Firebase. Check your connection and try again.",
+        "auth/invalid-api-key": "Google sign-in is using an invalid Firebase API key. Check VITE_FIREBASE_API_KEY in the Vercel project and redeploy.",
+        "auth/web-storage-unsupported": "This browser is blocking the storage Google sign-in needs. Enable cookies and site storage, then try again.",
+        "auth/too-many-requests": "Google temporarily blocked sign-in attempts from this device. Wait a little and try again.",
+        "auth/internal-error": "Firebase could not complete Google sign-in. Check that the Google provider is enabled and this site is listed under Firebase Authentication authorized domains.",
       };
       setLoginError(
         firebaseMessages[error.code]
           || backendMessage
           || (error.code === "ERR_NETWORK"
             ? "Nexora could not reach the sign-in service. Please try again, or choose the demo account."
-            : "Google sign-in could not finish. Please try again.")
+            : error.code
+              ? `Google sign-in failed (${error.code}). Please check the Firebase Authentication settings and try again.`
+              : error.message || "Google sign-in could not finish. Please try again.")
       );
     } finally {
       setIsWakingBackend(false);
@@ -76,27 +83,24 @@ function Home() {
     }
   };
 
-  const enterDemo = () => {
+  const enterDemo = async () => {
+    if (signInInProgress.current) return;
     demoSelectedDuringSignIn.current = true;
-    const demoUser = {
-      id: "nexora-demo-user",
-      name: "Demo User",
-      email: "demo@nexora.local",
-      isDemo: true,
-    };
-    if (!localStorage.getItem("nexora-demo-chats")) {
-      localStorage.setItem("nexora-demo-chats", JSON.stringify([{
-        _id: "demo-welcome",
-        title: "Welcome to Nexora",
-        messages: [
-          { role: "user", content: "What can I do in this demo?" },
-          { role: "assistant", content: "Explore the Nexora chat workspace, start new chats, and try the suggested prompts. Your demo conversations are saved in this browser. You can generate images in the demo; live AI and document tools require signing in." },
-        ],
-      }]));
-    }
-    localStorage.setItem("nexora-demo-user", JSON.stringify(demoUser));
-    dispatch(setUseradata(demoUser));
+    signInInProgress.current = true;
+    setIsSigningIn(true);
     setLoginError("");
+    try {
+      const { data } = await api.post("/api/auth/demo");
+      if (!data?.user?.userID) throw new Error("The demo session could not be created. Please try again.");
+      localStorage.removeItem("nexora-demo-user");
+      localStorage.removeItem("nexora-logged-out");
+      dispatch(setUseradata(data.user));
+    } catch (error) {
+      setLoginError(error.response?.data?.message || error.message || "The demo account could not start. Please try again.");
+    } finally {
+      signInInProgress.current = false;
+      setIsSigningIn(false);
+    }
   };
 
   return (
@@ -134,7 +138,7 @@ function Home() {
               Try demo account
             </button>
             <p className="-mt-3 text-center text-[11px] leading-relaxed text-slate-500">
-              Opens instantly with local sample chats. Demo chats stay on this device.
+              Try the full Nexora workspace with an isolated temporary account.
             </p>
             {isSigningIn && !isWakingBackend && (
               <p role="status" aria-live="polite" className="text-center text-xs leading-relaxed text-slate-300">

@@ -26,10 +26,15 @@ export const generatePollinationsImage = async (prompt) => {
   if (!response.ok) {
     const detail = (await response.text().catch(() => "")).slice(0, 400);
     const suffix = detail ? ` ${detail}` : "";
+    let message;
     if (response.status === 401 || response.status === 403) {
-      throw new Error(`Pollinations rejected the API key (HTTP ${response.status}). Check POLLINATIONS_API_KEY.${suffix}`);
+      message = `Pollinations rejected the API key (HTTP ${response.status}). Check POLLINATIONS_API_KEY.${suffix}`;
+    } else {
+      message = `Pollinations image generation failed (HTTP ${response.status}).${suffix}`;
     }
-    throw new Error(`Pollinations image generation failed (HTTP ${response.status}).${suffix}`);
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
   }
 
   const mimeType = response.headers.get("content-type")?.split(";")[0].toLowerCase() || "";
