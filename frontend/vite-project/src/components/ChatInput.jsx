@@ -125,10 +125,12 @@ function ChatInput({ suggestedPrompt, onSuggestionHandled, onOpenArtifact }) {
   const handleSendMessage = async (messageText = value) => {
     // React click handlers receive a MouseEvent. Accept only prompt strings so
     // tapping Send can never call trim() on the click event itself.
-    if (typeof messageText !== "string") messageText = value;
+    const promptText = typeof messageText === "string"
+      ? messageText
+      : typeof value === "string" ? value : "";
     if (isUploading) return;
-    if (!messageText.trim()) return;
-    const promptValue = messageText.trim();
+    if (!promptText.trim()) return;
+    const promptValue = promptText.trim();
     setValue(""); // clear the input field immediately
 
     dispatch(addMessage({ role: "user", content: promptValue }));
@@ -173,7 +175,11 @@ function ChatInput({ suggestedPrompt, onSuggestionHandled, onOpenArtifact }) {
     const payload = {
       prompt: promptValue,
       conversationId: currentConversationId,
-      agent: selectedAgent === "Image" ? "imageGen" : selectedAgent.toLowerCase(),
+      // An explicit image-generation request should reach the image agent even
+      // if Search or another mode was selected earlier in the session.
+      agent: selectedAgent === "Image" || /\b(create|generate|draw|make|edit)\b.{0,45}\b(image|picture|illustration|artwork|photo)\b|\b(image|picture|illustration)\b.{0,35}\b(of|for)\b/i.test(promptValue)
+        ? "imageGen"
+        : selectedAgent.toLowerCase(),
       documentIds: attachments.map((document) => document._id),
     };
 
