@@ -6,6 +6,7 @@ import morgan from "morgan";
 import mongoose from "mongoose";
 import redis from "../shared/redis/redis.js";
 import authRoutes from "../services/auth/routes/auth.route.js";
+import { demoLogin } from "../services/auth/controllers/auth.controller.js";
 import chatRoutes from "../services/chat/routes/chat.routes.js";
 import agentRoutes from "../services/agent/routes/agent.route.js";
 import protect from "../gateway/middleware/auth.middleware.js";
@@ -37,6 +38,9 @@ app.use(morgan("tiny"));
 app.get("/", (_req, res) => res.json({ message: "Nexora API is running" }));
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
+// Keep demo login mounted explicitly in the hosted API. This endpoint was
+// missing from the deployed service even though the auth router defines it.
+app.post("/api/auth/demo", demoLogin);
 app.use("/api/auth", authRoutes);
 app.get("/api/me", protect, getCurrentUser);
 
