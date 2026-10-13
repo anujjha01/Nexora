@@ -123,6 +123,9 @@ function ChatInput({ suggestedPrompt, onSuggestionHandled, onOpenArtifact }) {
   };
 
   const handleSendMessage = async (messageText = value) => {
+    // React click handlers receive a MouseEvent. Accept only prompt strings so
+    // tapping Send can never call trim() on the click event itself.
+    if (typeof messageText !== "string") messageText = value;
     if (isUploading) return;
     if (!messageText.trim()) return;
     const promptValue = messageText.trim();
@@ -397,7 +400,7 @@ function ChatInput({ suggestedPrompt, onSuggestionHandled, onOpenArtifact }) {
             placeholder="Ask Anything..."
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 handleSendMessage();
               }
@@ -433,9 +436,9 @@ function ChatInput({ suggestedPrompt, onSuggestionHandled, onOpenArtifact }) {
             ) : (
               <button
                 disabled={!value.trim() || isUploading}
-                onClick={handleSendMessage}
+                onClick={() => handleSendMessage()}
                 title={isLoading ? "Stop and send new message" : "Send message"}
-                className={`flex items-center justify-center w-8 h-8 rounded-lg border-none transition-all duration-150 ${value.trim()
+                className={`flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-xl border-none transition-all duration-150 sm:h-8 sm:w-8 sm:rounded-lg ${value.trim()
                   ? "bg-linear-to-br from-indigo-500 to-violet-700 hover:opacity-90 text-white cursor-pointer"
                   : "bg-white/[0.05] text-slate-600 cursor-not-allowed"
                   }`}

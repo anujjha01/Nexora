@@ -21,6 +21,23 @@ function Home() {
   const demoSelectedDuringSignIn = useRef(false);
   const [isWakingBackend, setIsWakingBackend] = useState(false);
 
+  useEffect(() => {
+    const updateViewportHeight = () => {
+      const height = window.visualViewport?.height || window.innerHeight;
+      document.documentElement.style.setProperty("--nexora-viewport-height", `${height}px`);
+    };
+    updateViewportHeight();
+    window.addEventListener("resize", updateViewportHeight);
+    window.visualViewport?.addEventListener("resize", updateViewportHeight);
+    window.visualViewport?.addEventListener("scroll", updateViewportHeight);
+    return () => {
+      window.removeEventListener("resize", updateViewportHeight);
+      window.visualViewport?.removeEventListener("resize", updateViewportHeight);
+      window.visualViewport?.removeEventListener("scroll", updateViewportHeight);
+      document.documentElement.style.removeProperty("--nexora-viewport-height");
+    };
+  }, []);
+
   const handleLogin = async (token, shouldCancel = () => false) => {
     const { data } = await api.post("/api/auth/login", { token });
     const user = data?.user || data;
@@ -104,7 +121,7 @@ function Home() {
   };
 
   return (
-    <div className="flex h-[100dvh] min-h-0 w-full overflow-hidden bg-[#0d0f14] text-white">
+    <div style={{ height: "var(--nexora-viewport-height, 100dvh)" }} className="flex min-h-0 w-full overflow-hidden bg-[#0d0f14] text-white">
       <SideBar mobileOpen={mobileSidebarOpen} onCloseMobile={() => setMobileSidebarOpen(false)} />
       {mobileSidebarOpen && <button type="button" aria-label="Close navigation menu" onClick={() => setMobileSidebarOpen(false)} className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px] lg:hidden" />}
       <ChatArea artifactOpen={artifactOpen} onToggleArtifact={() => setArtifactOpen((open) => !open)} onOpenArtifact={() => setArtifactOpen(true)} onOpenSidebar={() => setMobileSidebarOpen(true)} />
