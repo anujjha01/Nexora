@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { Code2, Copy, Download, Eye, FileCode2, Files, GripVertical, RefreshCw, X } from "lucide-react";
 
@@ -55,17 +55,17 @@ function makePreview(files, activeFileId) {
       .replace(/^\s*export\s+default\s+[A-Za-z_$][\w$]*\s*;?\s*$/gm, "")
       .replace(/^\s*export\s+(?=(?:function|class|const|let|var)\b)/gm, "");
     const componentName = source.match(/(?:function|class)\s+([A-Z][\w$]*)|(?:const|let|var)\s+([A-Z][\w$]*)\s*=/)?.slice(1).find(Boolean) || "App";
-    const policy = '<meta http-equiv="Content-Security-Policy" content="default-src \'self\' data: blob: https:; img-src data: blob: https:; style-src \'unsafe-inline\' https:; script-src \'unsafe-inline\' https://unpkg.com https://cdnjs.cloudflare.com; font-src data: https:; connect-src https:; frame-src \'none\'; form-action \'none\'; base-uri \'none\'">';
+    const policy = '<meta http-equiv="Content-Security-Policy" content="default-src \'self\' data: blob: https:; img-src data: blob: https:; style-src \'unsafe-inline\' https:; script-src \'unsafe-inline\' https://unpkg.com; font-src data: https:; connect-src https:; frame-src \'none\'; form-action \'none\'; base-uri \'none\'">';
     const cssTag = css ? `<style>${css.replace(/<\/style/gi, "<\\/style")}</style>` : "";
     const escapedSource = JSON.stringify(source).replace(/</g, "\\u003c");
     const babelPresets = reactFile.language === "tsx" ? "['react','typescript']" : "['react']";
-    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${policy}${cssTag}<style>html,body,#root{min-height:100%;margin:0}body{font-family:Inter,ui-sans-serif,system-ui,sans-serif}</style></head><body><div id="root" style="padding:20px;color:#475569;font:14px system-ui">Loading React preview… If the runtime is blocked, select the HTML file above for its standalone preview.</div><script src="https://unpkg.com/react@18/umd/react.development.js"><\/script><script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.5/babel.min.js"><\/script><script>window.addEventListener('load',function(){try{if(!window.React||!window.ReactDOM||!window.Babel)throw new Error('The React preview runtime could not load. Select the HTML file above for its standalone preview.');var code=${escapedSource};var result=Babel.transform(code,{presets:${babelPresets}}).code;new Function('React','ReactDOM',result+';ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(${componentName}));')(React,ReactDOM)}catch(error){document.getElementById('root').innerHTML='<pre style="margin:24px;padding:16px;color:#9f1239;background:#fff1f2;white-space:pre-wrap;border-radius:12px">React preview could not start. Select the HTML file above for its standalone preview.\\n\\n'+String(error).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]})+'</pre>'}});<\/script></body></html>`;
+    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${policy}${cssTag}<style>html,body,#root{min-height:100%;margin:0}body{font-family:Inter,ui-sans-serif,system-ui,sans-serif}</style></head><body><div id="root" style="padding:20px;color:#475569;font:14px system-ui">Loading React preview… If the runtime is blocked, select the HTML file above for its standalone preview.</div><script src="https://unpkg.com/react@18/umd/react.development.js"><${"/"}script><script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"><${"/"}script><script src="https://unpkg.com/@babel/standalone@7.26.5/babel.min.js"><${"/"}script><script>window.addEventListener('load',function(){try{if(!window.React||!window.ReactDOM||!window.Babel)throw new Error('The React preview runtime could not load. Select the HTML file above for its standalone preview.');var code=${escapedSource};var result=Babel.transform(code,{presets:${babelPresets}}).code;new Function('React','ReactDOM',result+';ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(${componentName}));')(React,ReactDOM)}catch(error){document.getElementById('root').innerHTML='<pre style="margin:24px;padding:16px;color:#9f1239;background:#fff1f2;white-space:pre-wrap;border-radius:12px">React preview could not start. Select the HTML file above for its standalone preview.\\n\\n'+String(error).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]})+'</pre>'}});<${"/"}script></body></html>`;
   }
 
   let document = htmlFile?.code || "<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"></head><body></body></html>";
   const policy = '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data: blob:; style-src \'unsafe-inline\'; script-src \'unsafe-inline\'; font-src data:; connect-src \'none\'; frame-src \'none\'; form-action \'none\'; base-uri \'none\'">';
   const styleTag = css ? `<style>${css.replace(/<\/style/gi, "<\\/style")}</style>` : "";
-  const scriptTag = javascript ? `<script>${escapeScript(javascript)}<\/script>` : "";
+  const scriptTag = javascript ? `<script>${escapeScript(javascript)}<${"/"}script>` : "";
 
   if (/<head\b[^>]*>/i.test(document)) {
     document = document.replace(/<head\b[^>]*>/i, (head) => `${head}${policy}${styleTag}`);
@@ -89,12 +89,7 @@ function Artifact({ open, onClose }) {
   const [view, setView] = useState("preview");
   const [copied, setCopied] = useState(false);
   const [panelWidth, setPanelWidth] = useState(() => Math.min(760, Math.max(420, window.innerWidth * 0.52)));
-  const resizeState = useMemo(() => ({ pointerId: null, startX: 0, startWidth: 0 }), []);
-
-  useEffect(() => {
-    setActiveFileId(artifact?.files[0]?.id || "");
-    setView("preview");
-  }, [artifact?.messageIndex]);
+  const resizeState = useRef({ pointerId: null, startX: 0, startWidth: 0 });
 
   useEffect(() => {
     if (!open) return undefined;
@@ -107,10 +102,10 @@ function Artifact({ open, onClose }) {
 
   useEffect(() => {
     const resize = (event) => {
-      if (resizeState.pointerId === null) return;
-      setPanelWidth(Math.min(window.innerWidth * 0.9, Math.max(360, resizeState.startWidth + resizeState.startX - event.clientX)));
+      if (resizeState.current.pointerId === null) return;
+      setPanelWidth(Math.min(window.innerWidth * 0.9, Math.max(360, resizeState.current.startWidth + resizeState.current.startX - event.clientX)));
     };
-    const stopResize = () => { resizeState.pointerId = null; };
+    const stopResize = () => { resizeState.current.pointerId = null; };
     window.addEventListener("pointermove", resize);
     window.addEventListener("pointerup", stopResize);
     window.addEventListener("pointercancel", stopResize);
@@ -119,10 +114,11 @@ function Artifact({ open, onClose }) {
       window.removeEventListener("pointerup", stopResize);
       window.removeEventListener("pointercancel", stopResize);
     };
-  }, [resizeState]);
+  }, []);
 
   const activeFile = artifact?.files.find((file) => file.id === activeFileId) || artifact?.files[0];
-  const preview = useMemo(() => artifact ? makePreview(artifact.files, activeFileId) : null, [artifact, activeFileId]);
+  const activePreviewFileId = activeFileId || activeFile?.id || "";
+  const preview = useMemo(() => artifact ? makePreview(artifact.files, activePreviewFileId) : null, [artifact, activePreviewFileId]);
   const canPreview = artifact?.files.some((file) => PREVIEW_LANGUAGES.has(file.language));
 
   const copyCode = async () => {
@@ -158,9 +154,9 @@ function Artifact({ open, onClose }) {
         aria-orientation="vertical"
         title="Drag to resize"
         onPointerDown={(event) => {
-          resizeState.pointerId = event.pointerId;
-          resizeState.startX = event.clientX;
-          resizeState.startWidth = panelWidth;
+          resizeState.current.pointerId = event.pointerId;
+          resizeState.current.startX = event.clientX;
+          resizeState.current.startWidth = panelWidth;
           event.currentTarget.setPointerCapture(event.pointerId);
         }}
         onKeyDown={(event) => {

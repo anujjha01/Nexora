@@ -52,7 +52,7 @@ function SideBar({ mobileOpen = false, onCloseMobile }) {
     };
 
     getConvo();
-  }, [userData?.id, dispatch]);
+  }, [userData, dispatch]);
 
   useEffect(() => {
     const expandOnSmallScreens = () => {

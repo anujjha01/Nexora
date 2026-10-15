@@ -15,7 +15,7 @@ import {
   X,
   Trash2,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import sendMessage from "../features/sendMessage";
 import { useSelector, useDispatch } from "react-redux";
 import getMessages from "../features/getMessages";
@@ -24,7 +24,6 @@ import { createConversation } from "../features/createConversation";
 import {
   setSelectedConversation,
   addConversation,
-  setConversation,
   updateConversationTitle,
 } from "../redux/conversationSlice";
 import updateConversation from "../features/updateConversation";
@@ -43,19 +42,11 @@ function ChatInput({ suggestedPrompt, onSuggestionHandled, onOpenArtifact }) {
   const [documents, setDocuments] = useState([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
   const fileInputRef = useRef(null);
-  const { selectedConversation, conversation = [] } = useSelector((state) => state.conversation);
-  const { userData } = useSelector((state) => state.user);
+  const { selectedConversation } = useSelector((state) => state.conversation);
   const { isLoading } = useSelector((state) => state.message);
   const abortControllerRef = useRef(null);
   const recognitionRef = useRef(null);
   const dispatch = useDispatch();
-
-  useEffect(() => {
-    if (!suggestedPrompt) return;
-    setValue(suggestedPrompt);
-    onSuggestionHandled?.();
-    handleSendMessage(suggestedPrompt);
-  }, [suggestedPrompt]);
 
   useEffect(() => () => recognitionRef.current?.abort(), []);
 
@@ -122,7 +113,7 @@ function ChatInput({ suggestedPrompt, onSuggestionHandled, onOpenArtifact }) {
     setAttachments((current) => current.filter((item) => item._id !== document._id));
   };
 
-  const handleSendMessage = async (messageText = value) => {
+  const handleSendMessage = useCallback(async (messageText = value) => {
     // React click handlers receive a MouseEvent. Accept only prompt strings so
     // tapping Send can never call trim() on the click event itself.
     const promptText = typeof messageText === "string"
@@ -220,7 +211,16 @@ function ChatInput({ suggestedPrompt, onSuggestionHandled, onOpenArtifact }) {
       const requestedWebsite = /\b(website|web app|webpage|landing page)\b/i.test(promptValue);
       if (generatedCode && (selectedAgent === "Coding" || requestedWebsite)) onOpenArtifact?.();
     }
-  };
+  }, [isUploading, value, selectedConversation, dispatch, selectedAgent, attachments, onOpenArtifact]);
+
+  useEffect(() => {
+    if (!suggestedPrompt) return undefined;
+    const timer = window.setTimeout(() => {
+      onSuggestionHandled?.();
+      void handleSendMessage(suggestedPrompt);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [suggestedPrompt, handleSendMessage, onSuggestionHandled]);
 
   const handleMicClick = () => {
     if (isListening) {
