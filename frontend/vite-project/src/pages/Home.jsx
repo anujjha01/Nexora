@@ -164,8 +164,7 @@ function Home() {
           <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,.025)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:linear-gradient(to_bottom,black,transparent_80%)]" />
         </div>
         <header className="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-5 sm:px-8 lg:px-12">
-          <a href="#top" className="flex items-center gap-2.5 font-semibold tracking-tight" aria-label="Nexora AI home">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-violet-400 to-indigo-600 shadow-lg shadow-violet-950/40"><Sparkles size={18} /></span>
+          <a href="#top" className="flex items-center font-semibold tracking-tight" aria-label="Nexora AI home">
             <span className="text-[17px]">Nexora<span className="text-violet-300"> AI</span></span>
           </a>
           <div className="hidden items-center gap-8 text-sm text-slate-400 md:flex">
