@@ -55,7 +55,9 @@ function makePreview(files, activeFileId) {
       .replace(/^\s*export\s+default\s+[A-Za-z_$][\w$]*\s*;?\s*$/gm, "")
       .replace(/^\s*export\s+(?=(?:function|class|const|let|var)\b)/gm, "");
     const componentName = source.match(/(?:function|class)\s+([A-Z][\w$]*)|(?:const|let|var)\s+([A-Z][\w$]*)\s*=/)?.slice(1).find(Boolean) || "App";
-    const policy = '<meta http-equiv="Content-Security-Policy" content="default-src \'self\' data: blob: https:; img-src data: blob: https:; style-src \'unsafe-inline\' https:; script-src \'unsafe-inline\' https://unpkg.com; font-src data: https:; connect-src https:; frame-src \'none\'; form-action \'none\'; base-uri \'none\'">';
+    // Babel compiles JSX dynamically inside this iframe. unsafe-eval is required
+    // for that compilation; sandbox="allow-scripts" keeps it isolated from the app.
+    const policy = '<meta http-equiv="Content-Security-Policy" content="default-src \'self\' data: blob: https:; img-src data: blob: https:; style-src \'unsafe-inline\' https:; script-src \'unsafe-inline\' \'unsafe-eval\' https://unpkg.com; font-src data: https:; connect-src https:; frame-src \'none\'; form-action \'none\'; base-uri \'none\'">';
     const cssTag = css ? `<style>${css.replace(/<\/style/gi, "<\\/style")}</style>` : "";
     const escapedSource = JSON.stringify(source).replace(/</g, "\\u003c");
     const babelPresets = reactFile.language === "tsx" ? "['react','typescript']" : "['react']";
