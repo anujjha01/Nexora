@@ -1,6 +1,8 @@
 name: Keep Render API warm
 
 on:
+  push:
+    branches: [main]
   schedule:
     - cron: "*/10 * * * *"
   workflow_dispatch:
@@ -14,10 +16,23 @@ concurrency:
 jobs:
   ping:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 6
     steps:
       - name: Request backend health endpoint
-        run: >-
-          curl --fail --silent --show-error --location
-          --max-time 90
-          https://nexora-ai-api-mqqk.onrender.com/health
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            echo "Backend health check attempt ${attempt}/6"
+            if curl --fail --silent --show-error --location \
+              --connect-timeout 10 --max-time 45 \
+              https://nexora-ai-api-mqqk.onrender.com/health; then
+              exit 0
+            fi
+
+            if [ "$attempt" -lt 6 ]; then
+              echo "Backend is still waking up; retrying in 10 seconds."
+              sleep 10
+            fi
+          done
+
+          echo "Backend health check failed after 6 attempts."
+          exit 1
